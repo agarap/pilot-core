@@ -1,0 +1,7 @@
+# Current schema versions for pilot-core
+# When core evolves, increment these and provide migrations
+
+agent: 1      # Agent config schema version
+rule: 1       # Rule config schema version
+tool: 1       # Tool docstring schema version
+config: 1     # General config schema version
