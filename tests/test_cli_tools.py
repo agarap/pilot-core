@@ -17,8 +17,8 @@ from click.testing import CliRunner
 import yaml
 
 # Import the CLI commands
-from tools.browse_research import research, load_research_metadata, RESULTS_DIR as BROWSE_RESULTS_DIR
-from tools.synthesize_research import synthesize, RESULTS_DIR as SYNTH_RESULTS_DIR
+from pilot_tools.browse_research import research, load_research_metadata, RESULTS_DIR as BROWSE_RESULTS_DIR
+from pilot_tools.synthesize_research import synthesize, RESULTS_DIR as SYNTH_RESULTS_DIR
 
 
 @pytest.fixture
@@ -84,8 +84,8 @@ def temp_results_dir(tmp_path, monkeypatch):
 
     # Also patch functions that have RESULTS_DIR as a default parameter
     # by redefining the default in the function objects
-    import tools.browse_research as browse_mod
-    import tools.synthesize_research as synth_mod
+    import pilot_tools.browse_research as browse_mod
+    import pilot_tools.synthesize_research as synth_mod
 
     # Patch the 'list' command's closure - the load_research_metadata function
     # is called without args, so we need to patch its default
@@ -767,7 +767,7 @@ class TestHelperFunctions:
     def test_load_research_metadata(self, sample_research_runs, temp_results_dir):
         """load_research_metadata loads all metadata from results directory."""
         # Need to import with patched RESULTS_DIR
-        from tools.browse_research import load_research_metadata
+        from pilot_tools.browse_research import load_research_metadata
 
         results = load_research_metadata(temp_results_dir)
 
@@ -779,7 +779,7 @@ class TestHelperFunctions:
 
     def test_load_research_metadata_empty_dir(self, tmp_path):
         """load_research_metadata handles empty directory."""
-        from tools.browse_research import load_research_metadata
+        from pilot_tools.browse_research import load_research_metadata
 
         empty_dir = tmp_path / 'empty'
         empty_dir.mkdir()
@@ -790,7 +790,7 @@ class TestHelperFunctions:
 
     def test_load_research_metadata_nonexistent_dir(self, tmp_path):
         """load_research_metadata handles nonexistent directory."""
-        from tools.browse_research import load_research_metadata
+        from pilot_tools.browse_research import load_research_metadata
 
         nonexistent = tmp_path / 'nonexistent'
 

@@ -24,11 +24,11 @@ rule: |
 
   ```bash
   # Get all parallel-safe items
-  uv run python -m tools project_tracker '{"action": "parallel_batch", "project": "<project>"}'
+  uv run python -m pilot_tools project_tracker '{"action": "parallel_batch", "project": "<project>"}'
 
   # For each item, launch agent in parallel (Pilot uses Task tool with multiple invocations)
   # Or use parallel_task for web research:
-  uv run python -m tools parallel_task '{"objective": "<question>", "output_path": "projects/<project>/_working/agent-outputs/<item-id>.md"}'
+  uv run python -m pilot_tools parallel_task '{"objective": "<question>", "output_path": "projects/<project>/_working/agent-outputs/<item-id>.md"}'
   ```
 
   ### 3. Parallel Safety Rules

@@ -5,7 +5,7 @@ import pytest
 from datetime import datetime, timedelta
 from pathlib import Path
 
-from lib.precommit import (
+from pilot_core.precommit import (
     parse_marker,
     is_expired,
     get_diff_hash,

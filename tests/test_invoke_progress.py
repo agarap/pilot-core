@@ -14,7 +14,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass
 
-from lib.progress import (
+from pilot_core.progress import (
     ProgressFile,
     ProgressStatus,
     read_progress,
@@ -73,7 +73,7 @@ def test_project(tmp_path, monkeypatch):
     projects_dir.mkdir()
 
     # Monkeypatch progress module to use tmp_path
-    import lib.progress as progress_module
+    import pilot_core.progress as progress_module
 
     def patched_get_progress_dir(project: str) -> Path:
         return tmp_path / "projects" / project / ".progress"
@@ -108,7 +108,7 @@ class TestInvokeProgressIntegration:
         progress_written = []
 
         original_write = None
-        import lib.progress as progress_module
+        import pilot_core.progress as progress_module
         original_write = progress_module.write_progress
 
         def track_write_progress(project, progress):
@@ -123,7 +123,7 @@ class TestInvokeProgressIntegration:
         monkeypatch.setattr(progress_module, "write_progress", track_write_progress)
 
         # Also patch invoke module's import
-        import lib.invoke as invoke_module
+        import pilot_core.invoke as invoke_module
         monkeypatch.setattr(invoke_module, "write_progress", track_write_progress)
 
         # Mock the agent config loading
@@ -136,7 +136,7 @@ class TestInvokeProgressIntegration:
         monkeypatch.setattr(invoke_module, "query", mock_query)
 
         # Run invoke_agent
-        from lib.invoke import invoke_agent
+        from pilot_core.invoke import invoke_agent
         result = run_async(invoke_agent(
             "test-agent",
             "Test prompt",
@@ -151,8 +151,8 @@ class TestInvokeProgressIntegration:
 
     def test_progress_marked_completed_on_success(self, test_project, tmp_path, mock_agent_config, monkeypatch):
         """Progress file is marked completed when agent succeeds."""
-        import lib.progress as progress_module
-        import lib.invoke as invoke_module
+        import pilot_core.progress as progress_module
+        import pilot_core.invoke as invoke_module
 
         # Patch progress dir
         def patched_get_progress_dir(project: str) -> Path:
@@ -189,7 +189,7 @@ class TestInvokeProgressIntegration:
         monkeypatch.setattr(invoke_module, "query", mock_query)
 
         # Run invoke_agent
-        from lib.invoke import invoke_agent
+        from pilot_core.invoke import invoke_agent
         result = run_async(invoke_agent(
             "test-agent",
             "Test prompt",
@@ -202,8 +202,8 @@ class TestInvokeProgressIntegration:
 
     def test_progress_marked_failed_on_exception(self, test_project, tmp_path, mock_agent_config, monkeypatch):
         """Progress file is marked failed when agent raises exception."""
-        import lib.progress as progress_module
-        import lib.invoke as invoke_module
+        import pilot_core.progress as progress_module
+        import pilot_core.invoke as invoke_module
 
         # Patch progress dir
         def patched_get_progress_dir(project: str) -> Path:
@@ -241,7 +241,7 @@ class TestInvokeProgressIntegration:
         monkeypatch.setattr(invoke_module, "query", mock_query_error)
 
         # Run invoke_agent - should handle the error
-        from lib.invoke import invoke_agent
+        from pilot_core.invoke import invoke_agent
         try:
             result = run_async(invoke_agent(
                 "test-agent",
@@ -258,8 +258,8 @@ class TestInvokeProgressIntegration:
 
     def test_heartbeat_function_exists_and_callable(self):
         """Verify update_heartbeat function exists and is callable."""
-        from lib.progress import update_heartbeat
-        from lib.invoke import update_heartbeat as invoke_heartbeat
+        from pilot_core.progress import update_heartbeat
+        from pilot_core.invoke import update_heartbeat as invoke_heartbeat
 
         # Both modules should have access to update_heartbeat
         assert callable(update_heartbeat)
@@ -271,7 +271,7 @@ class TestProgressFileLifecycle:
 
     def test_progress_status_transitions(self):
         """Test that ProgressStatus has all expected transition states."""
-        from lib.progress import ProgressStatus
+        from pilot_core.progress import ProgressStatus
 
         # Verify all lifecycle states exist
         assert ProgressStatus.PENDING.value == "pending"
@@ -282,7 +282,7 @@ class TestProgressFileLifecycle:
 
     def test_progress_functions_imported_in_invoke(self):
         """Verify invoke module has all progress functions imported."""
-        import lib.invoke as invoke_module
+        import pilot_core.invoke as invoke_module
 
         # All progress functions should be available in invoke module
         assert hasattr(invoke_module, "write_progress")
@@ -297,7 +297,7 @@ class TestBackgroundModeProgress:
     def test_invoke_agent_supports_background_parameter(self):
         """Verify invoke_agent accepts background parameter."""
         import inspect
-        from lib.invoke import invoke_agent
+        from pilot_core.invoke import invoke_agent
 
         # Check that invoke_agent has a background parameter
         sig = inspect.signature(invoke_agent)
@@ -306,7 +306,7 @@ class TestBackgroundModeProgress:
 
     def test_progress_pending_status_for_background_mode(self):
         """PENDING status should be used for background agents."""
-        from lib.progress import ProgressStatus
+        from pilot_core.progress import ProgressStatus
 
         # PENDING status is used when agent is queued but not yet running
         # This is used in background mode before subprocess starts

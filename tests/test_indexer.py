@@ -19,7 +19,7 @@ from unittest.mock import patch, MagicMock
 import yaml
 
 # Import the functions we're testing
-from lib.indexer import (
+from pilot_core.indexer import (
     incremental_index,
     create_deep_research_index_item,
     update_index,

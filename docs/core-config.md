@@ -39,11 +39,11 @@ Claude Code's built-in Task tool bypasses ALL of this infrastructure.
 
 ```bash
 # CORRECT - Use lib/invoke.py
-uv run python -m lib.invoke builder "Create a new tool"
-uv run python -m lib.invoke web-researcher "Research topic X"
-uv run python -m lib.invoke academic-researcher "Analyze problem Y"
-uv run python -m lib.invoke git-reviewer "Review changes"
-uv run python -m lib.invoke parallel-results-searcher "Find entity Z"
+uv run python -m pilot_core.invoke builder "Create a new tool"
+uv run python -m pilot_core.invoke web-researcher "Research topic X"
+uv run python -m pilot_core.invoke academic-researcher "Analyze problem Y"
+uv run python -m pilot_core.invoke git-reviewer "Review changes"
+uv run python -m pilot_core.invoke parallel-results-searcher "Find entity Z"
 
 # WRONG - Never use Task tool
 # Task(subagent_type="general-purpose", ...)  <- BANNED
@@ -55,7 +55,7 @@ uv run python -m lib.invoke parallel-results-searcher "Find entity Z"
 If you catch yourself about to use `Task(subagent_type=...)`:
 1. **STOP**
 2. Identify which custom agent handles this work
-3. Use `uv run python -m lib.invoke <agent> "task"` instead
+3. Use `uv run python -m pilot_core.invoke <agent> "task"` instead
 4. **If no suitable agent exists**: Delegate to @builder to create one
 
 There are NO exceptions to this rule.
@@ -196,8 +196,8 @@ You (Pilot) run natively in Claude Code, subagents run via SDK subprocess.
 
 #### @web-researcher
 - Deep exploration of topics via web
-- Web searches (`uv run python -m tools web_search`)
-- Fetching documentation (`uv run python -m tools web_fetch`)
+- Web searches (`uv run python -m pilot_tools web_search`)
+- Fetching documentation (`uv run python -m pilot_tools web_fetch`)
 - External information gathering only
 
 #### @academic-researcher
@@ -254,22 +254,22 @@ Use `lib/invoke.py` to delegate tasks to SDK agents:
 
 ```bash
 # List available agents
-uv run python -m lib.invoke --list
+uv run python -m pilot_core.invoke --list
 
 # Invoke builder for implementation tasks
-uv run python -m lib.invoke builder "Create a hello world tool in tools/hello.py"
+uv run python -m pilot_core.invoke builder "Create a hello world tool in tools/hello.py"
 
 # Invoke web-researcher for external information
-uv run python -m lib.invoke web-researcher "Research Claude API rate limits" -v
+uv run python -m pilot_core.invoke web-researcher "Research Claude API rate limits" -v
 
 # Invoke git-reviewer before any commit
-uv run python -m lib.invoke git-reviewer "Review staged changes"
+uv run python -m pilot_core.invoke git-reviewer "Review staged changes"
 
 # Invoke academic-researcher for deep research
-uv run python -m lib.invoke academic-researcher "Analyze why transformer architectures dominate NLP"
+uv run python -m pilot_core.invoke academic-researcher "Analyze why transformer architectures dominate NLP"
 
 # Invoke with run ID for tracking
-uv run python -m lib.invoke builder "Fix the bug" --run-id 20250126_143022_abc
+uv run python -m pilot_core.invoke builder "Fix the bug" --run-id 20250126_143022_abc
 ```
 
 Returns JSON with:
@@ -285,10 +285,10 @@ Logs saved to `logs/agents/<agent>/<timestamp>.json`
 
 **The system is extensible.** When Pilot needs a capability that doesn't exist in current agents:
 
-1. **Delegate to @builder**: `uv run python -m lib.invoke builder "Create a new agent for X in agents/x.yaml"`
+1. **Delegate to @builder**: `uv run python -m pilot_core.invoke builder "Create a new agent for X in agents/x.yaml"`
 2. **Builder creates the YAML**: Defines the agent in `agents/*.yaml`
-3. **Update the index**: `uv run python -m lib.index`
-4. **Agent becomes available**: Now invokable via `uv run python -m lib.invoke x "task"`
+3. **Update the index**: `uv run python -m pilot_core.index`
+4. **Agent becomes available**: Now invokable via `uv run python -m pilot_core.invoke x "task"`
 
 Add new agents as YAML files in `agents/`:
 
@@ -317,7 +317,7 @@ prompt: |
 - `skip_context`: Skip context injection (default: false)
 - `hooks`: Lifecycle hooks (see `system/rules/agent-yaml-format.yaml`)
 
-Then run `uv run python -m lib.index` to update the index.
+Then run `uv run python -m pilot_core.index` to update the index.
 
 ---
 

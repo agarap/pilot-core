@@ -22,7 +22,7 @@ rule: |
 
   1. **Builder makes changes** (writes/edits files)
   2. **Builder stages changes** (`git add`)
-  3. **Pilot requests review** (`uv run python -m lib.invoke git-reviewer "Review staged changes"`)
+  3. **Pilot requests review** (`uv run python -m pilot_core.invoke git-reviewer "Review staged changes"`)
   4. **Git-reviewer reviews** (checks diff against all rules/guidelines)
   5. **Git-reviewer responds** with APPROVED or REQUEST_CHANGES
   6. **If REQUEST_CHANGES**: Builder addresses feedback, go to step 3

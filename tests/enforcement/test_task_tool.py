@@ -4,7 +4,7 @@ import json
 import tempfile
 import pytest
 from pathlib import Path
-from tools.detect_task_tool import detect_task_tool, BANNED_SUBAGENT_TYPES
+from pilot_tools.detect_task_tool import detect_task_tool, BANNED_SUBAGENT_TYPES
 
 
 class TestTaskToolDetection:

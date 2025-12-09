@@ -5,7 +5,7 @@ import pytest
 from pathlib import Path
 from unittest.mock import patch, MagicMock
 
-from lib.queries import (
+from pilot_core.queries import (
     load_query,
     execute_query,
     execute_sql,
@@ -20,7 +20,7 @@ from lib.queries import (
     QUERIES_DIR,
 )
 
-from lib.query_builder import QueryBuilder, query
+from pilot_core.query_builder import QueryBuilder, query
 
 
 # =============================================================================

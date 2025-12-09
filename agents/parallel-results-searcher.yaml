@@ -27,7 +27,7 @@ prompt: |
 
   - DO NOT check worktree status
   - DO NOT create worktrees
-  - DO NOT run `uv run python -m lib.worktree` commands
+  - DO NOT run `uv run python -m pilot_core.worktree` commands
   - WORK DIRECTLY in the current working directory
   - Pilot handles orchestration - you handle searching results
 

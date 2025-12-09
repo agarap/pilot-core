@@ -18,7 +18,7 @@ from unittest.mock import patch, MagicMock
 import yaml
 
 # Import the functions we're testing
-from tools.deep_research import (
+from pilot_tools.deep_research import (
     PENDING_DIR,
     RESULTS_DIR,
     _calculate_stats_from_output,

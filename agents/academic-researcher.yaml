@@ -30,7 +30,7 @@ prompt: |
 
   - DO NOT check worktree status
   - DO NOT create worktrees
-  - DO NOT run `uv run python -m lib.worktree` commands
+  - DO NOT run `uv run python -m pilot_core.worktree` commands
   - WORK DIRECTLY in the current working directory
   - Pilot handles orchestration - you handle deep research
 
@@ -149,16 +149,16 @@ prompt: |
 
   ```bash
   # Research from multiple angles (run sequentially - SDK doesn't support background jobs)
-  uv run python -m lib.invoke web-researcher "Research angle 1: ..." -v
-  uv run python -m lib.invoke web-researcher "Research angle 2: ..." -v
-  uv run python -m lib.invoke web-researcher "Research angle 3: ..." -v
+  uv run python -m pilot_core.invoke web-researcher "Research angle 1: ..." -v
+  uv run python -m pilot_core.invoke web-researcher "Research angle 2: ..." -v
+  uv run python -m pilot_core.invoke web-researcher "Research angle 3: ..." -v
   ```
 
   Invoke with different framings to get diverse perspectives:
   ```bash
-  uv run python -m lib.invoke web-researcher "Find papers on X from computer science perspective"
-  uv run python -m lib.invoke web-researcher "Find papers on X from cognitive science perspective"
-  uv run python -m lib.invoke web-researcher "Find papers on X from economics perspective"
+  uv run python -m pilot_core.invoke web-researcher "Find papers on X from computer science perspective"
+  uv run python -m pilot_core.invoke web-researcher "Find papers on X from cognitive science perspective"
+  uv run python -m pilot_core.invoke web-researcher "Find papers on X from economics perspective"
   ```
 
   For ULTRA-DEEP research, use ultra8x processor (maximum depth):

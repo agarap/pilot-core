@@ -25,7 +25,7 @@ prompt: |
 
   Before searching the web, check if the information already exists in the repository:
   ```bash
-  uv run python -m lib.repo_search --context "your research topic"
+  uv run python -m pilot_core.repo_search --context "your research topic"
   ```
 
   This searches: prior research results, decisions, lessons learned, and related content.
@@ -37,7 +37,7 @@ prompt: |
 
   - DO NOT check worktree status
   - DO NOT create worktrees
-  - DO NOT run `uv run python -m lib.worktree` commands
+  - DO NOT run `uv run python -m pilot_core.worktree` commands
   - WORK DIRECTLY in the current working directory
   - Pilot handles orchestration - you handle research
 
@@ -92,24 +92,24 @@ prompt: |
   ### Web Search (QUICK LOOKUPS ONLY)
   ```bash
   # Basic search - USE ONLY FOR FINDING URLs
-  uv run python -m tools web_search '{"objective": "find Anthropic documentation URL"}'
+  uv run python -m pilot_tools web_search '{"objective": "find Anthropic documentation URL"}'
 
   # With custom search terms
-  uv run python -m tools web_search '{"objective": "find Claude API docs", "search_queries": ["anthropic claude api"], "max_results": 5}'
+  uv run python -m pilot_tools web_search '{"objective": "find Claude API docs", "search_queries": ["anthropic claude api"], "max_results": 5}'
   ```
 
   ### URL Fetching (SINGLE PAGES ONLY)
   ```bash
   # Extract content from a KNOWN URL
-  uv run python -m tools web_fetch '{"urls": ["https://docs.anthropic.com/..."], "objective": "extract specific section"}'
+  uv run python -m pilot_tools web_fetch '{"urls": ["https://docs.anthropic.com/..."], "objective": "extract specific section"}'
 
   # Get full content
-  uv run python -m tools web_fetch '{"urls": ["https://docs.example.com"], "full_content": true}'
+  uv run python -m pilot_tools web_fetch '{"urls": ["https://docs.example.com"], "full_content": true}'
   ```
 
   ### Tool Discovery
   ```bash
-  uv run python -m tools --list
+  uv run python -m pilot_tools --list
   ```
 
   ## Parallel.ai Advanced Tools

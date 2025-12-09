@@ -199,4 +199,4 @@ rule: |
 
   ## After Creating/Modifying Agents
 
-  Run `uv run python -m lib.index` to update the system index.
+  Run `uv run python -m pilot_core.index` to update the system index.

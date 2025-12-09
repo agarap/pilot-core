@@ -15,7 +15,7 @@ rules:
       are working on to avoid conflicts.
     trigger: session_start, major_task
     action: |
-      Run: uv run python -m lib.worktree others
+      Run: uv run python -m pilot_core.worktree others
       This shows:
       - Other session names and descriptions
       - Files they've modified
@@ -28,7 +28,7 @@ rules:
       Before committing, check if any files conflict with other sessions.
     trigger: before_commit
     action: |
-      Run: uv run python -m lib.worktree conflicts
+      Run: uv run python -m pilot_core.worktree conflicts
       If conflicts detected:
       - Warn the user
       - Suggest coordination with the other session
@@ -52,7 +52,7 @@ rules:
       Before starting major changes, pull latest from main to reduce conflicts.
     trigger: before_major_modification
     action: |
-      Run: uv run python -m lib.worktree pull
+      Run: uv run python -m pilot_core.worktree pull
       This rebases current branch on latest main.
 
   - name: session-context-awareness
@@ -61,7 +61,7 @@ rules:
     trigger: user_mentions_parallel_agent
     action: |
       If user says "the other agent working on X" or "parallel session Y":
-      Run: uv run python -m lib.worktree others --json
+      Run: uv run python -m pilot_core.worktree others --json
       Find the relevant session and report:
       - What they're working on (description)
       - What files they've modified
@@ -74,7 +74,7 @@ rules:
       If auto-sync fails due to conflict, help resolve it.
     trigger: sync_conflict
     action: |
-      1. Run: uv run python -m lib.worktree pull
+      1. Run: uv run python -m pilot_core.worktree pull
       2. If rebase fails, inform user of conflicting files
       3. Help resolve conflicts (view diff, suggest resolution)
       4. After resolution: git add, git rebase --continue
@@ -90,20 +90,20 @@ shared_files_requiring_coordination:
 
 how_to_check_other_sessions: |
   # See what other sessions are working on (recommended)
-  uv run python -m lib.worktree others
+  uv run python -m pilot_core.worktree others
 
   # Check for conflicts with your staged changes
-  uv run python -m lib.worktree conflicts
+  uv run python -m pilot_core.worktree conflicts
 
   # List all active parallel sessions
-  uv run python -m lib.worktree list
+  uv run python -m pilot_core.worktree list
 
   # Get detailed status
-  uv run python -m lib.worktree status
+  uv run python -m pilot_core.worktree status
 
 how_to_pull_latest_main: |
   # Rebase on latest main (do this before major work)
-  uv run python -m lib.worktree pull
+  uv run python -m pilot_core.worktree pull
 
 how_commits_flow_to_main: |
   # Automatic! No human intervention needed.
@@ -116,13 +116,13 @@ how_commits_flow_to_main: |
   #
   # If there's a conflict:
   # - Hook reports it
-  # - Run: uv run python -m lib.worktree pull
+  # - Run: uv run python -m pilot_core.worktree pull
   # - Resolve conflicts
   # - Commit again
 
 how_to_create_parallel_session: |
   # From main worktree (or happy --yolo handles this)
-  uv run python -m lib.worktree create "feature-name" --desc "What I'm working on"
+  uv run python -m pilot_core.worktree create "feature-name" --desc "What I'm working on"
 
   # Navigate to new worktree
   cd ../pilot-feature-name
@@ -134,7 +134,7 @@ when_human_mentions_other_agent: |
   # "check what agent/session Y is doing":
 
   # Get info about all other sessions
-  uv run python -m lib.worktree others
+  uv run python -m pilot_core.worktree others
 
   # Then coordinate by:
   # - Avoiding files they've modified

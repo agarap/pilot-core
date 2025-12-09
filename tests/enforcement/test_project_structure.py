@@ -4,7 +4,7 @@ import subprocess
 import tempfile
 import pytest
 from pathlib import Path
-from lib.validate import check_project_structure
+from pilot_core.validate import check_project_structure
 
 
 class TestProjectStructureValidation:

@@ -704,7 +704,7 @@ integrations:
         - Challenging priority misalignment
 
     invocation: |
-      uv run python -m lib.invoke email-agent "
+      uv run python -m pilot_core.invoke email-agent "
         Perform email triage for today.
 
         Focus on:
@@ -808,7 +808,7 @@ workflow:
     steps:
       - step: 1
         action: "Pilot invokes @email-agent"
-        command: "uv run python -m lib.invoke email-agent 'Daily email triage'"
+        command: "uv run python -m pilot_core.invoke email-agent 'Daily email triage'"
 
       - step: 2
         action: "@email-agent performs triage phases 1-6"

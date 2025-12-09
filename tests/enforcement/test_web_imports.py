@@ -3,7 +3,7 @@
 import tempfile
 import pytest
 from pathlib import Path
-from tools.scan_web_imports import scan_web_imports, scan_file, FORBIDDEN_LIBRARIES
+from pilot_tools.scan_web_imports import scan_web_imports, scan_file, FORBIDDEN_LIBRARIES
 
 
 class TestWebImportsScanner:

@@ -12,16 +12,16 @@ Work items are tracked in `work_list.json` (or `feature_list.json` for backward 
 
 ```bash
 # List all items in a project
-uv run python -m tools feature_tracker '{"action": "list", "project": "my-project"}'
+uv run python -m pilot_tools feature_tracker '{"action": "list", "project": "my-project"}'
 
 # Get next available item
-uv run python -m tools feature_tracker '{"action": "next", "project": "my-project"}'
+uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "my-project"}'
 
 # Mark item as passing
-uv run python -m tools feature_tracker '{"action": "mark_passing", "project": "my-project", "feature_id": "feat-001"}'
+uv run python -m pilot_tools feature_tracker '{"action": "mark_passing", "project": "my-project", "feature_id": "feat-001"}'
 
 # Mark item as failing
-uv run python -m tools feature_tracker '{"action": "mark_failing", "project": "my-project", "feature_id": "feat-001"}'
+uv run python -m pilot_tools feature_tracker '{"action": "mark_failing", "project": "my-project", "feature_id": "feat-001"}'
 ```
 
 ### work_tracker (Generic)
@@ -29,9 +29,9 @@ uv run python -m tools feature_tracker '{"action": "mark_failing", "project": "m
 Same interface as feature_tracker but supports all work item types:
 
 ```bash
-uv run python -m tools work_tracker '{"action": "list", "project": "research-project"}'
-uv run python -m tools work_tracker '{"action": "next", "project": "research-project"}'
-uv run python -m tools work_tracker '{"action": "update_status", "project": "research-project", "item_id": "h-001", "status": "completed"}'
+uv run python -m pilot_tools work_tracker '{"action": "list", "project": "research-project"}'
+uv run python -m pilot_tools work_tracker '{"action": "next", "project": "research-project"}'
+uv run python -m pilot_tools work_tracker '{"action": "update_status", "project": "research-project", "item_id": "h-001", "status": "completed"}'
 ```
 
 ## Work Item Types
@@ -234,7 +234,7 @@ abandoned ←────────────── (reopen)
 The `@initializer` agent can generate work lists for different project types:
 
 ```bash
-uv run python -m lib.invoke initializer "
+uv run python -m pilot_core.invoke initializer "
   Initialize project: market-analysis
   Type: research
 

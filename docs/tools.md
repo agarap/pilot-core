@@ -9,12 +9,12 @@
 All tools are CLI with automatic I/O logging:
 
 ```bash
-uv run python -m tools <tool_name> '<json_args>'
+uv run python -m pilot_tools <tool_name> '<json_args>'
 
 # Examples
-uv run python -m tools web_search '{"objective": "Claude API docs"}'
-uv run python -m tools web_fetch '{"urls": ["https://example.com"]}'
-uv run python -m tools --list
+uv run python -m pilot_tools web_search '{"objective": "Claude API docs"}'
+uv run python -m pilot_tools web_fetch '{"urls": ["https://example.com"]}'
+uv run python -m pilot_tools --list
 ```
 
 Tools automatically pick up `PILOT_RUN_ID` from environment to link calls to runs.
@@ -300,22 +300,22 @@ Universal project tracking supporting 5 work types:
 
 ```bash
 # Standard actions (all project types)
-uv run python -m tools project_tracker '{"action": "list", "project": "<project>"}'
-uv run python -m tools project_tracker '{"action": "next", "project": "<project>"}'
-uv run python -m tools project_tracker '{"action": "add", "project": "<project>", "item_data": {...}}'
-uv run python -m tools project_tracker '{"action": "bind", "project": "<project>"}'
+uv run python -m pilot_tools project_tracker '{"action": "list", "project": "<project>"}'
+uv run python -m pilot_tools project_tracker '{"action": "next", "project": "<project>"}'
+uv run python -m pilot_tools project_tracker '{"action": "add", "project": "<project>", "item_data": {...}}'
+uv run python -m pilot_tools project_tracker '{"action": "bind", "project": "<project>"}'
 
 # Lifecycle actions
-uv run python -m tools project_tracker '{"action": "advance", "project": "<project>", "item_id": "q-001"}'
-uv run python -m tools project_tracker '{"action": "mark_passing", "project": "<project>", "item_id": "core-001"}'
-uv run python -m tools project_tracker '{"action": "mark_failing", "project": "<project>", "item_id": "core-001"}'
+uv run python -m pilot_tools project_tracker '{"action": "advance", "project": "<project>", "item_id": "q-001"}'
+uv run python -m pilot_tools project_tracker '{"action": "mark_passing", "project": "<project>", "item_id": "core-001"}'
+uv run python -m pilot_tools project_tracker '{"action": "mark_failing", "project": "<project>", "item_id": "core-001"}'
 
 # Research-specific actions
-uv run python -m tools project_tracker '{"action": "add_finding", "project": "<project>", "item_id": "q-001", "finding": "..."}'
-uv run python -m tools project_tracker '{"action": "synthesize", "project": "<project>", "item_id": "synth-001"}'
+uv run python -m pilot_tools project_tracker '{"action": "add_finding", "project": "<project>", "item_id": "q-001", "finding": "..."}'
+uv run python -m pilot_tools project_tracker '{"action": "synthesize", "project": "<project>", "item_id": "synth-001"}'
 
 # Parallel execution
-uv run python -m tools project_tracker '{"action": "parallel_batch", "project": "<project>"}'
+uv run python -m pilot_tools project_tracker '{"action": "parallel_batch", "project": "<project>"}'
 ```
 
 **Parallel Execution:**
@@ -349,16 +349,16 @@ Monitor progress of background agents. Critical for token-efficient polling.
 
 ```bash
 # Check all active agents in a project
-uv run python -m tools agent_status '{"project": "my-project"}'
+uv run python -m pilot_tools agent_status '{"project": "my-project"}'
 
 # Check specific run IDs
-uv run python -m tools agent_status '{"project": "my-project", "run_ids": ["run_abc123", "run_def456"]}'
+uv run python -m pilot_tools agent_status '{"project": "my-project", "run_ids": ["run_abc123", "run_def456"]}'
 
 # List all active agents across all projects
-uv run python -m tools agent_status '{"list_all": true}'
+uv run python -m pilot_tools agent_status '{"list_all": true}'
 
 # Include completed agents in results
-uv run python -m tools agent_status '{"project": "my-project", "include_completed": true}'
+uv run python -m pilot_tools agent_status '{"project": "my-project", "include_completed": true}'
 ```
 
 **Output format:**
@@ -413,19 +413,19 @@ Audit system rules for hierarchy, conflicts, and enforcement gaps:
 
 ```bash
 # Show rule hierarchy (priority order)
-uv run python -m tools rule_audit '{"action": "hierarchy"}'
+uv run python -m pilot_tools rule_audit '{"action": "hierarchy"}'
 
 # Detect rule conflicts
-uv run python -m tools rule_audit '{"action": "conflicts"}'
+uv run python -m pilot_tools rule_audit '{"action": "conflicts"}'
 
 # Find enforcement gaps (prompt-only rules that could be code-enforced)
-uv run python -m tools rule_audit '{"action": "gaps"}'
+uv run python -m pilot_tools rule_audit '{"action": "gaps"}'
 
 # Rules for specific agent
-uv run python -m tools rule_audit '{"action": "agent", "agent": "builder"}'
+uv run python -m pilot_tools rule_audit '{"action": "agent", "agent": "builder"}'
 
 # Full audit report
-uv run python -m tools rule_audit '{"action": "all"}'
+uv run python -m pilot_tools rule_audit '{"action": "all"}'
 ```
 
 Or via the library directly:
@@ -452,16 +452,16 @@ Verify that enforcement mechanisms actually exist and work:
 
 ```bash
 # Full coverage report
-uv run python -m tools rule_coverage '{"action": "report"}'
+uv run python -m pilot_tools rule_coverage '{"action": "report"}'
 
 # Verify specific rule's enforcement
-uv run python -m tools rule_coverage '{"action": "verify", "rule": "git-review-required"}'
+uv run python -m pilot_tools rule_coverage '{"action": "verify", "rule": "git-review-required"}'
 
 # Find orphaned enforcement code (code without rules)
-uv run python -m tools rule_coverage '{"action": "orphans"}'
+uv run python -m pilot_tools rule_coverage '{"action": "orphans"}'
 
 # List rules that could be code-enforced
-uv run python -m tools rule_coverage '{"action": "opportunities"}'
+uv run python -m pilot_tools rule_coverage '{"action": "opportunities"}'
 ```
 
 Coverage analysis provides:
@@ -875,6 +875,6 @@ When creating a tool in tools/:
 
 4. Add dependencies with `uv add` if needed
 
-5. Run `uv run python -m lib.index`
+5. Run `uv run python -m pilot_core.index`
 
 6. Test the tool works

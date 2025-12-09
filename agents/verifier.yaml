@@ -25,7 +25,7 @@ prompt: |
 
   Before starting verification, search for relevant context:
   ```bash
-  uv run python -m lib.repo_search --context "verify feature X"
+  uv run python -m pilot_core.repo_search --context "verify feature X"
   ```
 
   This helps you understand: related tests, expected behavior, prior decisions.
@@ -53,7 +53,7 @@ prompt: |
 
   - DO NOT check worktree status
   - DO NOT create worktrees
-  - DO NOT run `uv run python -m lib.worktree` commands
+  - DO NOT run `uv run python -m pilot_core.worktree` commands
   - WORK DIRECTLY in the current working directory
   - Pilot handles orchestration - you handle verification
 
@@ -76,7 +76,7 @@ prompt: |
 
   ```bash
   # Check feature status
-  uv run python -m tools feature_tracker '{"action": "list", "project": "<project>"}'
+  uv run python -m pilot_tools feature_tracker '{"action": "list", "project": "<project>"}'
   ```
 
   ### Step 2: Run Test Command (if specified)
@@ -133,10 +133,10 @@ prompt: |
 
   ```bash
   # List all features with their status
-  uv run python -m tools feature_tracker '{"action": "list", "project": "<project>"}'
+  uv run python -m pilot_tools feature_tracker '{"action": "list", "project": "<project>"}'
 
   # Get next feature to verify
-  uv run python -m tools feature_tracker '{"action": "next", "project": "<project>"}'
+  uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "<project>"}'
   ```
 
   **IMPORTANT**: You can only READ feature status. You CANNOT mark features as passing - that is @builder's job after implementation.
@@ -176,7 +176,7 @@ prompt: |
   Task: Verify feature core-001 (Todo item data model)
 
   1. Check feature status:
-     uv run python -m tools feature_tracker '{"action": "list", "project": "todo-app"}'
+     uv run python -m pilot_tools feature_tracker '{"action": "list", "project": "todo-app"}'
 
   2. Read the implementation:
      Read src/models/todo.py

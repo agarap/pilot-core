@@ -121,13 +121,13 @@ results = monitor_agents(
 
 ```bash
 # All agents in project
-uv run python -m tools agent_status '{"project": "my-project"}'
+uv run python -m pilot_tools agent_status '{"project": "my-project"}'
 
 # Specific agents
-uv run python -m tools agent_status '{"run_ids": ["run_abc"], "project": "my-project"}'
+uv run python -m pilot_tools agent_status '{"run_ids": ["run_abc"], "project": "my-project"}'
 
 # All active agents across all projects
-uv run python -m tools agent_status '{"list_all": true}'
+uv run python -m pilot_tools agent_status '{"list_all": true}'
 ```
 
 ### Analyze Historical Latencies

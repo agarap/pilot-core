@@ -44,7 +44,7 @@ rule: |
 
   5. **Agent Instructions**
      Agents must be instructed to:
-     - Use CLI tools via: uv run python -m tools <tool_name>
+     - Use CLI tools via: uv run python -m pilot_tools <tool_name>
      - Choose parallel_task for any non-trivial research
      - Never attempt to bypass these restrictions
 

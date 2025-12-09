@@ -62,7 +62,7 @@ Knowledge entries are scored on four dimensions (25 points each, 100 total):
 
 Check knowledge base health:
 ```bash
-uv run python -m tools knowledge_stats
+uv run python -m pilot_tools knowledge_stats
 ```
 
 ---
@@ -108,8 +108,8 @@ decisions = search_by_type("decision", "database")
 Filter by category or severity:
 ```bash
 # Via knowledge_stats
-uv run python -m tools knowledge_stats --json | jq '.by_category'
-uv run python -m tools knowledge_stats --json | jq '.by_severity'
+uv run python -m pilot_tools knowledge_stats --json | jq '.by_category'
+uv run python -m pilot_tools knowledge_stats --json | jq '.by_severity'
 ```
 
 ---
@@ -227,10 +227,10 @@ consequences:
 
 ```bash
 # After completing a feature, reflect on lessons
-uv run python -m tools suggest_lesson --feature core-001 --project myproject
+uv run python -m pilot_tools suggest_lesson --feature core-001 --project myproject
 
 # Generate lesson file from answers
-uv run python -m tools suggest_lesson --generate --answers '{
+uv run python -m pilot_tools suggest_lesson --generate --answers '{
   "name": "api-rate-limiting",
   "title": "Lessons from API Rate Limiting",
   "severity": "medium",
@@ -244,16 +244,16 @@ uv run python -m tools suggest_lesson --generate --answers '{
 
 ```bash
 # Full text report
-uv run python -m tools knowledge_stats
+uv run python -m pilot_tools knowledge_stats
 
 # JSON output for scripting
-uv run python -m tools knowledge_stats --json
+uv run python -m pilot_tools knowledge_stats --json
 
 # Check quality scores
-uv run python -m tools knowledge_stats --json | jq '.low_quality_entries'
+uv run python -m pilot_tools knowledge_stats --json | jq '.low_quality_entries'
 
 # Custom quality threshold
-uv run python -m tools knowledge_stats '{"quality_threshold": 75}'
+uv run python -m pilot_tools knowledge_stats '{"quality_threshold": 75}'
 ```
 
 ### Template Locations

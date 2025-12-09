@@ -18,7 +18,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import yaml
 
-from lib.progress import (
+from pilot_core.progress import (
     ProgressFile,
     ProgressStatus,
     write_progress,
@@ -46,7 +46,7 @@ def test_project(tmp_path, monkeypatch):
     projects_dir.mkdir()
 
     # Monkeypatch the _get_progress_dir function to use tmp_path
-    import lib.progress as progress_module
+    import pilot_core.progress as progress_module
 
     original_get_progress_dir = progress_module._get_progress_dir
 

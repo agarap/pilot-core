@@ -20,7 +20,7 @@ from unittest.mock import patch, MagicMock
 import yaml
 
 # Import the functions we're testing
-from lib.research_cache import (
+from pilot_core.research_cache import (
     search_existing_research,
     pre_research_check,
     research_reuse_report,
@@ -30,7 +30,7 @@ from lib.research_cache import (
     DEFAULT_SIMILARITY_THRESHOLD,
     TOOL_LOGS_DIR,
 )
-from lib.search import INDEX_PATH
+from pilot_core.search import INDEX_PATH
 
 
 class TestSearchExistingResearch:
@@ -886,9 +886,9 @@ class TestAcademicResearcherPromptEnforcement:
             return yaml.safe_load(f)
 
     def test_prompt_contains_pre_research_check_import(self, academic_researcher_yaml):
-        """Prompt should import pre_research_check from lib.research_cache."""
+        """Prompt should import pre_research_check from pilot_core.research_cache."""
         prompt = academic_researcher_yaml.get('prompt', '')
-        assert 'from lib.research_cache import pre_research_check' in prompt
+        assert 'from pilot_core.research_cache import pre_research_check' in prompt
 
     def test_prompt_contains_cache_check_code_example(self, academic_researcher_yaml):
         """Prompt should include code example for cache check."""
@@ -939,7 +939,7 @@ class TestProcessorCosts:
 
     def test_processor_costs_defined(self):
         """PROCESSOR_COSTS should be defined with expected processors."""
-        from lib.research_cache import PROCESSOR_COSTS
+        from pilot_core.research_cache import PROCESSOR_COSTS
 
         assert 'core' in PROCESSOR_COSTS
         assert 'pro' in PROCESSOR_COSTS
@@ -948,7 +948,7 @@ class TestProcessorCosts:
 
     def test_processor_costs_are_positive(self):
         """All processor costs should be positive numbers."""
-        from lib.research_cache import PROCESSOR_COSTS
+        from pilot_core.research_cache import PROCESSOR_COSTS
 
         for processor, cost in PROCESSOR_COSTS.items():
             assert cost > 0, f'{processor} cost should be positive'
@@ -956,7 +956,7 @@ class TestProcessorCosts:
 
     def test_higher_tiers_cost_more(self):
         """Higher processor tiers should cost more."""
-        from lib.research_cache import PROCESSOR_COSTS
+        from pilot_core.research_cache import PROCESSOR_COSTS
 
         # Basic tier ordering check
         assert PROCESSOR_COSTS['core'] <= PROCESSOR_COSTS['pro']
@@ -969,27 +969,27 @@ class TestCleanJsonString:
 
     def test_clean_strips_quotes(self):
         """_clean_json_string should strip surrounding JSON quotes."""
-        from lib.research_cache import _clean_json_string
+        from pilot_core.research_cache import _clean_json_string
 
         assert _clean_json_string('"hello"') == 'hello'
         assert _clean_json_string('"test value"') == 'test value'
 
     def test_clean_handles_none(self):
         """_clean_json_string should handle None gracefully."""
-        from lib.research_cache import _clean_json_string
+        from pilot_core.research_cache import _clean_json_string
 
         assert _clean_json_string(None) == ''
 
     def test_clean_handles_unquoted_string(self):
         """_clean_json_string should handle unquoted strings."""
-        from lib.research_cache import _clean_json_string
+        from pilot_core.research_cache import _clean_json_string
 
         assert _clean_json_string('hello') == 'hello'
         assert _clean_json_string('test value') == 'test value'
 
     def test_clean_handles_partial_quotes(self):
         """_clean_json_string should handle partially quoted strings."""
-        from lib.research_cache import _clean_json_string
+        from pilot_core.research_cache import _clean_json_string
 
         # Only strips if both start and end have quotes
         assert _clean_json_string('"hello') == '"hello'
@@ -1053,7 +1053,7 @@ class TestResearchMatchOrdering:
         monkeypatch.setattr('lib.research_cache.INDEX_PATH', index_path)
         monkeypatch.setattr('lib.research_cache.embed', lambda x: [0.5] * 1536)
 
-        from lib.research_cache import search_existing_research
+        from pilot_core.research_cache import search_existing_research
         results = search_existing_research('Machine learning', limit=10)
 
         # Results should be ordered by score descending
@@ -1092,7 +1092,7 @@ class TestCacheCheckResultIntegrity:
         monkeypatch.setattr('lib.research_cache.INDEX_PATH', index_path)
         monkeypatch.setattr('lib.research_cache.embed', lambda x: [0.5] * 1536)
 
-        from lib.research_cache import pre_research_check
+        from pilot_core.research_cache import pre_research_check
         result = pre_research_check('Matching query exactly', threshold=0.1)
 
         # If it's a cache hit, there must be results
@@ -1104,7 +1104,7 @@ class TestCacheCheckResultIntegrity:
         index_path = tmp_path / 'nonexistent' / 'index.json'
         monkeypatch.setattr('lib.research_cache.INDEX_PATH', index_path)
 
-        from lib.research_cache import pre_research_check
+        from pilot_core.research_cache import pre_research_check
         result = pre_research_check('Unique query xyz123', threshold=0.99)
 
         # Cache miss means no results

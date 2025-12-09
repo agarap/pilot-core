@@ -35,7 +35,7 @@ prompt: |
 
   Before beginning ANY work, search the repository for relevant context:
   ```bash
-  uv run python -m lib.repo_search --context "your task description"
+  uv run python -m pilot_core.repo_search --context "your task description"
   ```
 
   Or in Python:
@@ -74,10 +74,10 @@ prompt: |
   ```
 
   If found:
-  1. Get next feature: `uv run python -m tools feature_tracker '{"action": "next", "project": "<project>"}'`
+  1. Get next feature: `uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "<project>"}'`
   2. Implement ONLY that ONE feature
   3. Get git-reviewer approval, then commit
-  4. Mark passing: `uv run python -m tools feature_tracker '{"action": "mark_passing", "project": "<project>", "feature_id": "<id>"}'`
+  4. Mark passing: `uv run python -m pilot_tools feature_tracker '{"action": "mark_passing", "project": "<project>", "feature_id": "<id>"}'`
   5. Update progress.txt with session summary (at TOP of file)
   6. Output: `FEATURE COMPLETE: <feature-id>`
   7. STOP - do not start another feature
@@ -113,7 +113,7 @@ prompt: |
   returns: What it returns
   """
   ```
-  Then: `uv run python -m lib.index`
+  Then: `uv run python -m pilot_core.index`
 
   **Agents** (agents/):
   ```yaml
@@ -127,7 +127,7 @@ prompt: |
   prompt: |
     Agent instructions...
   ```
-  Then: `uv run python -m lib.index`
+  Then: `uv run python -m pilot_core.index`
 
   **Rules** (system/rules/):
   ```yaml
@@ -156,7 +156,7 @@ prompt: |
 
   ## Agent Invocation
 
-  May invoke @web-researcher: `uv run python -m lib.invoke web-researcher "topic" -v`
+  May invoke @web-researcher: `uv run python -m pilot_core.invoke web-researcher "topic" -v`
   NEVER invoke yourself (@builder) - causes infinite recursion.
 
   ## Quality

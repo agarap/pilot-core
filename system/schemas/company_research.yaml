@@ -850,7 +850,7 @@ integrations:
         - Single-question research (use @web-researcher)
 
     invocation: |
-      uv run python -m lib.invoke company-researcher "
+      uv run python -m pilot_core.invoke company-researcher "
         Research company: [Company Name]
         Domain: [domain.com]
 
@@ -889,7 +889,7 @@ integrations:
         - Quick lookups within a research context
 
     invocation: |
-      uv run python -m lib.invoke web-researcher "
+      uv run python -m pilot_core.invoke web-researcher "
         Research thread for company research co-001:
 
         Company: [Company Name]
@@ -917,7 +917,7 @@ integrations:
         - Risk factors documented
 
     invocation: |
-      uv run python -m lib.invoke verifier "
+      uv run python -m pilot_core.invoke verifier "
         Verify company research co-001 is ready for completion.
 
         Check:

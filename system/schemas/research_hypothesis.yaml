@@ -625,7 +625,7 @@ integrations:
         - Searching for counterexamples
 
     invocation: |
-      uv run python -m lib.invoke web-researcher "
+      uv run python -m pilot_core.invoke web-researcher "
         Research hypothesis h-001: [hypothesis title]
 
         Find evidence for and against:
@@ -659,7 +659,7 @@ integrations:
         - Statistical analysis guidance
 
     invocation: |
-      uv run python -m lib.invoke academic-researcher "
+      uv run python -m pilot_core.invoke academic-researcher "
         Analyze evidence for hypothesis h-001:
 
         Prior confidence: 0.6
@@ -695,7 +695,7 @@ integrations:
         - Methodology followed
 
     invocation: |
-      uv run python -m lib.invoke verifier "
+      uv run python -m pilot_core.invoke verifier "
         Verify hypothesis h-001 is ready for completion.
 
         Check:

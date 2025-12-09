@@ -27,7 +27,7 @@ prompt: |
 
   - DO NOT check worktree status
   - DO NOT create worktrees
-  - DO NOT run `uv run python -m lib.worktree` commands
+  - DO NOT run `uv run python -m pilot_core.worktree` commands
   - WORK DIRECTLY in the current working directory
   - Pilot handles orchestration - you handle review
 
@@ -401,7 +401,7 @@ prompt: |
 
   But .githooks/post-commit contains:
   ```bash
-  uv run python -m lib.worktree sync
+  uv run python -m pilot_core.worktree sync
   ```
 
   This is a **DOCUMENTATION-IMPLEMENTATION MISMATCH** and must be flagged:
@@ -415,7 +415,7 @@ prompt: |
   You can invoke @web-researcher when you need to verify claims or facts in the changes:
 
   ```bash
-  uv run python -m lib.invoke web-researcher "Verify that Claude API rate limits are correctly documented in this change"
+  uv run python -m pilot_core.invoke web-researcher "Verify that Claude API rate limits are correctly documented in this change"
   ```
 
   Use this capability when:
@@ -466,12 +466,12 @@ prompt: |
 
   1. **Clear any old marker first** (in case of re-review):
      ```bash
-     uv run python -m lib.approve clear
+     uv run python -m pilot_core.approve clear
      ```
 
   2. **Create the new approval marker**:
      ```bash
-     uv run python -m lib.approve
+     uv run python -m pilot_core.approve
      ```
 
   This creates `.git/REVIEW_APPROVED` containing:
@@ -501,7 +501,7 @@ prompt: |
 
   Then immediately run:
   ```bash
-  uv run python -m lib.approve clear && uv run python -m lib.approve
+  uv run python -m pilot_core.approve clear && uv run python -m pilot_core.approve
   ```
 
   This ensures the approval marker is created for the commit to proceed.

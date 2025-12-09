@@ -64,10 +64,10 @@ with Run.create("Research topic X", project="research") as run:
 
 1. **Gather context**: `uv run python tools/context.py "task description"`
 2. **Create run**: `Run.create("task", project="name")`
-3. **Delegate** to subagent(s): `uv run python -m lib.invoke <agent> "task"`
+3. **Delegate** to subagent(s): `uv run python -m pilot_core.invoke <agent> "task"`
 4. **Agents work** -> output files to `projects/<project>/`
 5. **Monitor progress** -> Sleep and check agent output after each step
-6. **Review** via @git-reviewer: `uv run python -m lib.invoke git-reviewer "Review changes"`
+6. **Review** via @git-reviewer: `uv run python -m pilot_core.invoke git-reviewer "Review changes"`
 7. **Complete run** -> manifest saved to `.runs/`
 8. **Commit** with run ID in message (index auto-regenerated)
 9. **Document knowledge** -> Check if decision or lesson should be logged (see below)
@@ -98,9 +98,9 @@ run_id = await invoke_agent("builder", "Create new tool", background=True, proje
 
 ```bash
 # Check status of background agents
-uv run python -m tools agent_status '{"project": "my-project"}'
-uv run python -m tools agent_status '{"run_ids": ["run_abc123"], "project": "my-project"}'
-uv run python -m tools agent_status '{"list_all": true}'
+uv run python -m pilot_tools agent_status '{"project": "my-project"}'
+uv run python -m pilot_tools agent_status '{"run_ids": ["run_abc123"], "project": "my-project"}'
+uv run python -m pilot_tools agent_status '{"list_all": true}'
 ```
 
 **Waiting for completion:**
@@ -183,16 +183,16 @@ This ensures quality, security, and consistency across all changes.
 ### Step-by-Step Flow
 
 1. **Stage changes**: `git add -A`
-2. **Request review**: `uv run python -m lib.invoke git-reviewer "Review staged changes" -v`
+2. **Request review**: `uv run python -m pilot_core.invoke git-reviewer "Review staged changes" -v`
 3. **Wait for verdict**: APPROVED or NEEDS_CHANGES
-4. **If APPROVED**: `uv run python -m lib.approve`
+4. **If APPROVED**: `uv run python -m pilot_core.approve`
 5. **Commit**: `git commit -m "your message"`
 
 ### Hash Verification (Security Feature)
 
 The approval system uses SHA-256 hashing to prevent approval gaming:
 
-1. When you run `uv run python -m lib.approve`:
+1. When you run `uv run python -m pilot_core.approve`:
    - Computes SHA-256 hash of `git diff --cached` output
    - Stores hash in `.git/REVIEW_APPROVED` marker
 
@@ -262,23 +262,23 @@ The resume system (`lib/session.py` and `lib/resume.py`) helps recover from thes
 If you suspect a previous session was interrupted, check for stuck sessions:
 
 ```bash
-uv run python -m lib.resume --list
+uv run python -m pilot_core.resume --list
 ```
 
 ### CLI Commands
 
 ```bash
 # List stuck/errored sessions (default)
-uv run python -m lib.resume --list
+uv run python -m pilot_core.resume --list
 
 # List all recent sessions
-uv run python -m lib.resume --all
+uv run python -m pilot_core.resume --all
 
 # Generate resume prompt for a session
-uv run python -m lib.resume <session-id>
+uv run python -m pilot_core.resume <session-id>
 
 # Copy resume prompt to clipboard (macOS)
-uv run python -m lib.resume <session-id> --clipboard
+uv run python -m pilot_core.resume <session-id> --clipboard
 ```
 
 ### Session States
@@ -341,7 +341,7 @@ This file contains:
 
 ```bash
 # Get the next feature to implement
-uv run python -m tools feature_tracker '{"action": "next", "project": "<project>"}'
+uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "<project>"}'
 ```
 
 The feature tracker:
@@ -377,7 +377,7 @@ SESSION START
          |
          v
 +-----------------+
-| 2. Get next     |  uv run python -m tools feature_tracker \
+| 2. Get next     |  uv run python -m pilot_tools feature_tracker \
 |    feature      |    '{"action": "next", "project": "<project>"}'
 +--------+--------+
          |
@@ -401,7 +401,7 @@ SESSION START
          |
          v
 +-----------------+
-| 6. MARK         |  uv run python -m tools feature_tracker \
+| 6. MARK         |  uv run python -m pilot_tools feature_tracker \
 |    PASSING      |    '{"action": "mark_passing", ...}'
 +--------+--------+
          |
@@ -413,7 +413,7 @@ SESSION START
          |
          v
 +-----------------+
-| 8. GIT REVIEW   |  uv run python -m lib.invoke git-reviewer \
+| 8. GIT REVIEW   |  uv run python -m pilot_core.invoke git-reviewer \
 |    & COMMIT     |    "Review changes"
 +--------+--------+
          |
@@ -426,13 +426,13 @@ SESSION START
 
 ```bash
 # List all features with status
-uv run python -m tools feature_tracker '{"action": "list", "project": "<project>"}'
+uv run python -m pilot_tools feature_tracker '{"action": "list", "project": "<project>"}'
 
 # Get next incomplete feature (respects dependencies)
-uv run python -m tools feature_tracker '{"action": "next", "project": "<project>"}'
+uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "<project>"}'
 
 # Mark feature as passing (after implementation verified)
-uv run python -m tools feature_tracker '{"action": "mark_passing", "project": "<project>", "feature_id": "core-001"}'
+uv run python -m pilot_tools feature_tracker '{"action": "mark_passing", "project": "<project>", "feature_id": "core-001"}'
 ```
 
 ### Progress.txt Format
@@ -479,7 +479,7 @@ When a feature is complete:
 | **Purpose** | Recover crashed/stuck sessions | Track deliberate multi-session work |
 | **Trigger** | Session interruption | "Continue implementing" requests |
 | **State stored in** | `~/.claude/` (Claude Code logs) | `projects/<project>/feature_list.json` |
-| **Commands** | `uv run python -m lib.resume` | `uv run python -m tools feature_tracker` |
+| **Commands** | `uv run python -m pilot_core.resume` | `uv run python -m pilot_tools feature_tracker` |
 | **When to use** | Agent detects stuck session | Human says "continue next feature" |
 
 **Rule**: "continue the next feature" -> Feature Tracker. Session crashed -> Session Resume.

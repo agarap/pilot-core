@@ -17,25 +17,25 @@ Pilot Core provides:
 ### Invoke an Agent
 
 ```bash
-uv run python -m lib.invoke builder "Create a new feature"
-uv run python -m lib.invoke git-reviewer "Review my changes"
+uv run python -m pilot_core.invoke builder "Create a new feature"
+uv run python -m pilot_core.invoke git-reviewer "Review my changes"
 ```
 
 ### Use Repository Search
 
 ```bash
 # Search before any task
-uv run python -m lib.repo_search --context "your task description"
+uv run python -m pilot_core.repo_search --context "your task description"
 
 # Quick search
-uv run python -m lib.repo_search "keyword"
+uv run python -m pilot_core.repo_search "keyword"
 ```
 
 ### Run Tools
 
 ```bash
-uv run python -m tools web_search '{"objective": "query"}'
-uv run python -m tools feature_tracker '{"action": "next", "project": "myproject"}'
+uv run python -m pilot_tools web_search '{"objective": "query"}'
+uv run python -m pilot_tools feature_tracker '{"action": "next", "project": "myproject"}'
 ```
 
 ## Available Agents
