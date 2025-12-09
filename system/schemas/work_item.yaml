@@ -1,0 +1,663 @@
+# Unified Work Item Schema
+# Defines a generic work item structure supporting multiple work types:
+# - Code features (software development tasks)
+# - Research hypotheses (scientific/analytical work)
+# - Email tasks (communication triage)
+# - Company research (competitive intelligence)
+# - Milestones (aggregate checkpoints)
+#
+# This schema enables the pilot system to track diverse work types
+# with a consistent structure while allowing type-specific metadata.
+
+name: work_item
+version: "1.0"
+description: Generic work item schema for the pilot system
+
+# =============================================================================
+# Core Schema Definition
+# =============================================================================
+
+schema:
+  # ---------------------------------------------------------------------------
+  # Required Fields
+  # ---------------------------------------------------------------------------
+
+  id:
+    type: string
+    required: true
+    description: |
+      Unique identifier within the work list. Format: {type-prefix}-{number}
+      Examples: 'enforce-001', 'h-001', 'email-001', 'cr-001', 'ms-001'
+    pattern: "^[a-z]+-[0-9]{3}$"
+
+  type:
+    type: enum
+    required: true
+    values:
+      - feature          # Code/implementation task
+      - hypothesis       # Research hypothesis to test
+      - email_task       # Email requiring action
+      - company_research # Company intelligence gathering
+      - milestone        # Aggregate checkpoint (multiple items)
+    description: |
+      The work item type determines which metadata fields are applicable
+      and which status transitions are valid.
+
+  title:
+    type: string
+    required: true
+    description: |
+      Short descriptive title (under 80 characters).
+      Should be scannable and unique within the work list.
+
+  description:
+    type: string
+    required: true
+    description: |
+      Detailed description of the work item. For features, this includes
+      implementation guidance. For hypotheses, the full hypothesis statement.
+
+  status:
+    type: enum
+    required: true
+    values:
+      - pending      # Not yet started
+      - in_progress  # Currently being worked on
+      - blocked      # Cannot proceed (see blockers field)
+      - completed    # Successfully finished
+      - abandoned    # Intentionally dropped (see reason in notes)
+    default: pending
+    description: |
+      Current state of the work item. Status transitions should be logged.
+
+  # ---------------------------------------------------------------------------
+  # Optional Fields
+  # ---------------------------------------------------------------------------
+
+  priority:
+    type: enum
+    required: false
+    values:
+      - critical  # Must be done immediately, blocks other work
+      - high      # Should be done soon
+      - medium    # Normal priority (default if unspecified)
+      - low       # Nice to have, do when time permits
+    default: medium
+    description: |
+      Relative importance. Critical items are processed first regardless
+      of dependency order.
+
+  dependencies:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      List of work item IDs that must be completed before this item
+      can be started. The work_tracker tool respects these when
+      determining the next available item.
+
+  acceptance_criteria:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      List of criteria that must be satisfied for the item to be
+      marked as completed. Each criterion should be verifiable.
+
+  metadata:
+    type: object
+    required: false
+    description: |
+      Type-specific metadata. Structure depends on the 'type' field.
+      See type_metadata section below for schemas per type.
+
+  # ---------------------------------------------------------------------------
+  # Tracking Fields (managed by work_tracker)
+  # ---------------------------------------------------------------------------
+
+  created_at:
+    type: datetime
+    required: false
+    description: ISO 8601 timestamp when item was created
+
+  updated_at:
+    type: datetime
+    required: false
+    description: ISO 8601 timestamp of last status change
+
+  completed_at:
+    type: datetime
+    required: false
+    description: ISO 8601 timestamp when status became 'completed'
+
+  blockers:
+    type: array
+    items: string
+    required: false
+    description: |
+      List of blockers preventing progress. Relevant when status='blocked'.
+      Should include actionable descriptions.
+
+  notes:
+    type: string
+    required: false
+    description: |
+      Free-form notes. Used for abandonment reasons, implementation
+      decisions, or other context.
+
+# =============================================================================
+# Project-Level Fields (in feature_list.json / work_list.json root)
+# =============================================================================
+
+project_fields:
+
+  worktree:
+    type: object
+    required: false
+    description: |
+      Binds this project to a specific git worktree for parallel session
+      isolation. When bound, feature_tracker operations are restricted to
+      the specified branch to prevent mixed uncommitted changes across projects.
+    fields:
+      branch:
+        type: string
+        required: true
+        description: |
+          Git branch name for this project (e.g., 'parallel/project-name').
+          This is the branch that should be checked out when working on features.
+      path:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          Absolute path to the worktree directory. Null if worktree hasn't been
+          created yet. Set automatically by 'bind' action.
+      required:
+        type: boolean
+        default: true
+        description: |
+          If true, feature_tracker refuses to operate outside this branch.
+          If false, operations proceed with a warning when branch mismatch detected.
+      created_at:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          ISO 8601 timestamp when worktree binding was created/updated.
+          Set automatically by 'bind' action.
+      last_activity:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          ISO 8601 timestamp of last commit or feature update in this worktree.
+          Updated automatically when features are marked passing.
+          Used by cleanup_stale_sessions() to identify inactive worktrees.
+      merged_to_main_at:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          ISO 8601 timestamp of last successful merge to main branch.
+          Updated automatically after each auto-sync to main.
+      total_merges:
+        type: integer
+        default: 0
+        description: |
+          Count of how many times this worktree's changes have been merged
+          to main. Incremented after each successful auto-sync.
+
+# =============================================================================
+# Type-Specific Metadata Schemas
+# =============================================================================
+
+type_metadata:
+
+  # ---------------------------------------------------------------------------
+  # Feature Metadata (type: feature)
+  # ---------------------------------------------------------------------------
+  feature:
+    description: Metadata for code/implementation features
+    fields:
+      category:
+        type: string
+        description: |
+          Feature category for grouping (e.g., 'API', 'UI', 'Infrastructure')
+      estimated_complexity:
+        type: enum
+        values: [low, medium, high]
+        description: |
+          Rough estimate of implementation effort.
+          low: < 1 hour, medium: 1-4 hours, high: > 4 hours
+      test_command:
+        type: string
+        description: |
+          Command to verify the feature works (e.g., 'uv run pytest tests/test_feature.py')
+      passes:
+        type: boolean
+        default: false
+        description: |
+          Whether the feature passes its test_command. Set by feature_tracker.
+      files_changed:
+        type: array
+        items: string
+        description: |
+          List of files created or modified for this feature (populated after completion)
+
+  # ---------------------------------------------------------------------------
+  # Hypothesis Metadata (type: hypothesis)
+  # ---------------------------------------------------------------------------
+  hypothesis:
+    description: Metadata for research hypotheses
+    fields:
+      prior_confidence:
+        type: float
+        range: [0.0, 1.0]
+        description: |
+          Initial confidence in the hypothesis (0 = certainly false, 1 = certainly true)
+      posterior_confidence:
+        type: float
+        range: [0.0, 1.0]
+        description: |
+          Updated confidence after gathering evidence
+      evidence_for:
+        type: array
+        items: string
+        description: |
+          List of evidence supporting the hypothesis. Include source references.
+      evidence_against:
+        type: array
+        items: string
+        description: |
+          List of evidence contradicting the hypothesis. Include source references.
+      verdict:
+        type: enum
+        values:
+          - supported        # Evidence supports hypothesis
+          - refuted          # Evidence contradicts hypothesis
+          - insufficient     # Not enough evidence either way
+          - null             # Not yet evaluated
+        default: null
+        description: |
+          Final verdict on the hypothesis after evidence review
+      methodology:
+        type: string
+        description: |
+          How the hypothesis will be/was tested
+      sources:
+        type: array
+        items: string
+        description: |
+          References, papers, URLs used in evaluation
+
+  # ---------------------------------------------------------------------------
+  # Email Task Metadata (type: email_task)
+  # ---------------------------------------------------------------------------
+  email_task:
+    description: Metadata for email triage tasks
+    fields:
+      email_id:
+        type: string
+        description: |
+          Unique identifier from the email system
+      thread_id:
+        type: string
+        description: |
+          Thread/conversation identifier for grouping related emails
+      sender:
+        type: string
+        description: |
+          Email sender address or name
+      subject:
+        type: string
+        description: |
+          Email subject line
+      received_at:
+        type: datetime
+        description: |
+          When the email was received
+      action:
+        type: enum
+        values:
+          - respond    # Needs a reply
+          - delegate   # Forward to someone else
+          - defer      # Handle later (set deadline)
+          - archive    # No action needed, just file
+          - review     # Read and assess
+        description: |
+          Required action for this email
+      deadline:
+        type: datetime
+        description: |
+          When response/action is needed by (optional)
+      delegated_to:
+        type: string
+        description: |
+          Who the email was delegated to (if action=delegate)
+      response_draft:
+        type: string
+        description: |
+          Draft response text (if action=respond)
+
+  # ---------------------------------------------------------------------------
+  # Company Research Metadata (type: company_research)
+  # ---------------------------------------------------------------------------
+  company_research:
+    description: Metadata for company/startup intelligence
+    fields:
+      company_name:
+        type: string
+        description: |
+          Official company name
+      domain:
+        type: string
+        description: |
+          Company website domain (e.g., 'example.com')
+      research_questions:
+        type: array
+        items: string
+        description: |
+          Specific questions to answer about the company
+      findings:
+        type: array
+        items:
+          type: object
+          fields:
+            question:
+              type: string
+            answer:
+              type: string
+            confidence:
+              type: enum
+              values: [high, medium, low]
+            sources:
+              type: array
+              items: string
+        description: |
+          Answers to research questions with confidence and sources
+      industry:
+        type: string
+        description: |
+          Primary industry/sector
+      funding_stage:
+        type: string
+        description: |
+          Funding stage (Seed, Series A, etc.)
+      key_people:
+        type: array
+        items:
+          type: object
+          fields:
+            name:
+              type: string
+            role:
+              type: string
+            linkedin:
+              type: string
+        description: |
+          Key executives and founders
+
+  # ---------------------------------------------------------------------------
+  # Milestone Metadata (type: milestone)
+  # ---------------------------------------------------------------------------
+  milestone:
+    description: Metadata for aggregate milestones
+    fields:
+      includes:
+        type: array
+        items: string
+        description: |
+          List of work item IDs that comprise this milestone
+      target_date:
+        type: date
+        description: |
+          Target completion date for the milestone
+      progress_metric:
+        type: string
+        description: |
+          How progress is measured (e.g., '% of included items completed')
+
+# =============================================================================
+# Status Transitions
+# =============================================================================
+
+status_transitions:
+  description: |
+    Valid status transitions and their meanings. Invalid transitions
+    should be rejected by the work_tracker tool.
+
+  valid:
+    - from: pending
+      to: [in_progress, blocked, abandoned]
+    - from: in_progress
+      to: [completed, blocked, abandoned, pending]  # pending for pausing
+    - from: blocked
+      to: [pending, in_progress, abandoned]
+    - from: completed
+      to: [pending]  # For reopening if acceptance criteria not actually met
+    - from: abandoned
+      to: [pending]  # For reconsidering dropped items
+
+  notes:
+    completed_to_pending: |
+      Reopening a completed item means acceptance criteria were not
+      actually satisfied. Requires explanation in notes field.
+    abandoned_to_pending: |
+      Reconsidering an abandoned item. Requires updated justification.
+
+# =============================================================================
+# Examples
+# =============================================================================
+
+examples:
+
+  # ---------------------------------------------------------------------------
+  # Feature Example
+  # ---------------------------------------------------------------------------
+  feature:
+    id: "api-001"
+    type: "feature"
+    title: "User authentication endpoint"
+    description: |
+      Create /api/auth/login endpoint accepting email/password,
+      returning JWT token. Include rate limiting (5 attempts/minute).
+    status: "pending"
+    priority: "high"
+    dependencies: ["api-000"]  # Depends on base API setup
+    acceptance_criteria:
+      - "POST /api/auth/login returns 200 with JWT on valid credentials"
+      - "Returns 401 on invalid credentials"
+      - "Returns 429 after 5 failed attempts within 1 minute"
+      - "JWT contains user_id and expires in 24 hours"
+    metadata:
+      category: "Authentication"
+      estimated_complexity: "medium"
+      test_command: "uv run pytest tests/test_auth.py -k login"
+      passes: false
+
+  # ---------------------------------------------------------------------------
+  # Hypothesis Example
+  # ---------------------------------------------------------------------------
+  hypothesis:
+    id: "h-001"
+    type: "hypothesis"
+    title: "Opus outperforms Sonnet on complex reasoning tasks"
+    description: |
+      Hypothesis: Claude Opus achieves higher accuracy than Sonnet
+      on multi-step reasoning tasks requiring 5+ inference steps.
+    status: "in_progress"
+    priority: "medium"
+    dependencies: []
+    acceptance_criteria:
+      - "Test on at least 100 multi-step reasoning problems"
+      - "Statistical significance (p < 0.05) for accuracy difference"
+      - "Document reasoning chain quality, not just final answer"
+    metadata:
+      prior_confidence: 0.7
+      posterior_confidence: null
+      evidence_for:
+        - "Anthropic documentation suggests Opus for complex tasks"
+        - "Anecdotal reports from heavy users"
+      evidence_against: []
+      verdict: null
+      methodology: |
+        Run identical prompts through both models, blind evaluation
+        of reasoning chains by third party.
+      sources:
+        - "https://docs.anthropic.com/en/docs/about-claude/models"
+
+  # ---------------------------------------------------------------------------
+  # Email Task Example
+  # ---------------------------------------------------------------------------
+  email_task:
+    id: "email-001"
+    type: "email_task"
+    title: "Reply to investor update request"
+    description: |
+      Investor asking for Q3 metrics update. Need to compile
+      key metrics and send summary.
+    status: "pending"
+    priority: "high"
+    dependencies: []
+    acceptance_criteria:
+      - "Include ARR, MRR growth, churn rate"
+      - "Add customer acquisition highlights"
+      - "Send by Friday EOD"
+    metadata:
+      email_id: "msg-abc123"
+      thread_id: "thread-xyz789"
+      sender: "investor@vcfirm.com"
+      subject: "Q3 Update Request"
+      received_at: "2024-01-15T09:30:00Z"
+      action: "respond"
+      deadline: "2024-01-19T17:00:00Z"
+      delegated_to: null
+      response_draft: null
+
+  # ---------------------------------------------------------------------------
+  # Company Research Example
+  # ---------------------------------------------------------------------------
+  company_research:
+    id: "cr-001"
+    type: "company_research"
+    title: "Competitor analysis: Acme Corp"
+    description: |
+      Deep dive on Acme Corp - direct competitor in the
+      enterprise automation space.
+    status: "pending"
+    priority: "medium"
+    dependencies: []
+    acceptance_criteria:
+      - "Answer all research questions"
+      - "Identify key differentiators"
+      - "Assess competitive threat level"
+    metadata:
+      company_name: "Acme Corporation"
+      domain: "acme.com"
+      research_questions:
+        - "What is their primary product offering?"
+        - "Who are their target customers?"
+        - "What is their pricing model?"
+        - "Recent funding and valuation?"
+        - "Key technical differentiators?"
+      findings: []
+      industry: "Enterprise Software"
+      funding_stage: "Series B"
+      key_people: []
+
+  # ---------------------------------------------------------------------------
+  # Milestone Example
+  # ---------------------------------------------------------------------------
+  milestone:
+    id: "ms-001"
+    type: "milestone"
+    title: "MVP Launch Ready"
+    description: |
+      All features required for MVP launch are complete and tested.
+    status: "pending"
+    priority: "critical"
+    dependencies: []  # Milestone depends on included items
+    acceptance_criteria:
+      - "All included items have status: completed"
+      - "Integration tests pass"
+      - "Staging deployment successful"
+    metadata:
+      includes:
+        - "api-001"
+        - "api-002"
+        - "ui-001"
+        - "ui-002"
+      target_date: "2024-02-01"
+      progress_metric: "% of included items completed"
+
+# =============================================================================
+# Work List File Format
+# =============================================================================
+
+work_list_format:
+  description: |
+    Work lists are stored as JSON files (work_list.json or feature_list.json
+    for backward compatibility). The file contains project metadata and
+    an array of work items.
+
+  structure:
+    project:
+      type: string
+      description: Project name/identifier
+    description:
+      type: string
+      description: Project description
+    items:
+      type: array
+      items: "$ref:work_item"
+      description: Array of work items following this schema
+    total_items:
+      type: integer
+      description: Count of items (for quick reference)
+
+  example: |
+    {
+      "project": "my-project",
+      "description": "A sample project with mixed work types",
+      "items": [
+        {
+          "id": "feat-001",
+          "type": "feature",
+          "title": "...",
+          ...
+        },
+        {
+          "id": "h-001",
+          "type": "hypothesis",
+          "title": "...",
+          ...
+        }
+      ],
+      "total_items": 2
+    }
+
+# =============================================================================
+# Integration Points
+# =============================================================================
+
+integrations:
+  feature_tracker:
+    description: |
+      The existing tools/feature_tracker.py is backward compatible.
+      It works with feature_list.json files containing items of type=feature.
+      The newer work_tracker (track-002) will support all types.
+
+  agents:
+    builder: |
+      Uses feature_tracker to get next feature, implements it,
+      marks as passing.
+    verifier: |
+      Can verify any work item by checking acceptance_criteria.
+    web_researcher: |
+      Processes hypothesis and company_research items.
+    email_agent: |
+      Processes email_task items.
+    initializer: |
+      Generates work_list.json files for new projects.

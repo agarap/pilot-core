@@ -1,0 +1,202 @@
+name: agent-yaml-format
+description: All SDK-based agents must be YAML files in agents/ directory
+priority: 95
+when:
+  - agent: coder
+  - agent: pilot
+
+rule: |
+  All SDK-based subagents MUST be defined as YAML files in the agents/ directory.
+
+  ## Required Format
+
+  ```yaml
+  name: agent-name
+  type: subagent
+  description: One-line description
+  model: opus  # or sonnet, haiku
+  tools:
+    - Read
+    - Bash
+  tags:
+    - relevant-tags
+  created: "YYYY-MM-DD"
+
+  prompt: |
+    Multi-line prompt with agent instructions...
+  ```
+
+  ## Required Fields
+
+  - `name`: Agent identifier (matches filename without .yaml)
+  - `type`: Must be "subagent"
+  - `description`: One-line summary
+  - `prompt`: Full agent instructions
+
+  ## Optional Fields
+
+  - `model`: Model to use (opus, sonnet, haiku). Default: opus
+  - `tools`: List of allowed tools for the agent
+  - `tags`: List of tags for categorization
+  - `created`: Creation date (YYYY-MM-DD)
+  - `skip_context`: When true, skips automatic context gathering before agent
+    invocation. Use for agents that don't benefit from filesystem context
+    injection. Default: false
+  - `context_injection`: Configure what context is automatically injected (see below)
+  - `hooks`: Lifecycle hooks for agent execution (see below)
+  - `thinking`: Extended thinking configuration for complex reasoning (see below)
+
+  ## Context Injection Configuration
+
+  The `context_injection` field allows agents to specify what context should be
+  automatically injected into their task prompt. When configured, this overrides
+  the default auto-context behavior.
+
+  ```yaml
+  context_injection:
+    rules:
+      - git-review-required  # Inject specific rules by name
+      - web-access-policy
+    decisions:
+      - "005"                # Inject decisions by ID
+    files:
+      - "system/rules/*.yaml"  # Glob patterns for files to include
+    auto: true               # Also run auto-context detection
+  ```
+
+  ### context_injection.rules
+
+  - **Type**: array of rule names
+  - **Description**: Rules from system/rules/ to inject by name
+  - Rule text is truncated at 500 chars if too long
+
+  ### context_injection.decisions
+
+  - **Type**: array of decision IDs
+  - **Description**: Decisions from knowledge/decisions/ to inject
+  - Matches files like `005-auto-context.yaml` or `005.yaml`
+
+  ### context_injection.files
+
+  - **Type**: array of glob patterns
+  - **Description**: File patterns to include (max 5 per pattern, 10 total)
+  - File content is truncated at 1000 chars
+
+  ### context_injection.auto
+
+  - **Type**: boolean
+  - **Description**: When true, also runs auto-context detection via context.py
+  - Combines with other injection types
+
+  Use case: An agent that always needs certain rules or decisions should specify
+  them in context_injection rather than relying on keyword-based auto-detection.
+
+  ## Hooks Configuration
+
+  The `hooks` field defines lifecycle actions for agent execution:
+
+  ```yaml
+  hooks:
+    pre_task:
+      - validate_config  # Validate agent config before execution
+      - check_deps       # Check required dependencies
+    post_task:
+      - run_verifier     # Run @verifier after agent completes
+      - run_git_review   # Run @git-reviewer after agent completes
+      - update_index     # Regenerate data/index.json
+      - log_metrics      # Log execution metrics
+  ```
+
+  ### hooks.post_task
+
+  - **Type**: array of enum values
+  - **Description**: Actions to automatically run after agent completes successfully
+  - **Available values**:
+    - `run_verifier` - Run @verifier to validate agent's work
+    - `run_git_review` - Run @git-reviewer to review changes
+    - `update_index` - Regenerate data/index.json
+    - `log_metrics` - Log execution metrics to logs/
+
+  Use case: An agent that creates code should have `run_verifier` and `run_git_review`
+  in post_task to automatically validate and review its output.
+
+  ### hooks.pre_task
+
+  - **Type**: array of enum values
+  - **Description**: Validation or setup actions to run before agent execution
+  - **Available values**:
+    - `validate_config` - Validate agent configuration before execution
+    - `check_deps` - Check that required dependencies are available
+    - `clear_cache` - Clear any cached data before agent runs
+    - `log_start` - Log execution start with task details
+
+  Pre-task hooks run synchronously before the agent executes. If any hook fails,
+  the agent invocation is aborted with an error.
+
+  Use case: An agent that requires specific tools or dependencies should use
+  `check_deps` to fail fast if prerequisites are missing.
+
+  ## Thinking Configuration
+
+  The `thinking` field enables extended thinking for agents that need to perform
+  complex reasoning, analysis, or creative problem-solving. The configuration is
+  passed to Claude via a temporary settings file.
+
+  ```yaml
+  thinking:
+    type: enabled
+    budget_tokens: 10000
+  ```
+
+  ### thinking.type
+
+  - **Type**: string (must be "enabled")
+  - **Description**: Enables thinking mode for the agent
+  - **Required** when thinking is configured
+
+  ### thinking.budget_tokens
+
+  - **Type**: integer
+  - **Description**: Maximum tokens allocated for thinking (reasoning) phase
+  - **Recommended values**:
+    - 16384 (16K): Code review and security analysis (git-reviewer)
+    - 32768 (32K): Complex implementation decisions (builder)
+    - 65536 (64K): Deep synthesis and research (academic-researcher)
+  - **Note**: Power of 2 values align with model's context windows
+
+  Use case: Agents dealing with complex decisions, security analysis, or creative
+  synthesis benefit from extended thinking. This allows Claude to work through
+  problems more thoroughly before responding.
+
+  ## Example with Hooks
+
+  ```yaml
+  name: my-builder-agent
+  type: subagent
+  description: Builds widgets with automatic verification
+  model: sonnet
+  tools:
+    - Read
+    - Edit
+    - Bash
+  hooks:
+    pre_task:
+      - validate_config
+    post_task:
+      - run_verifier
+      - run_git_review
+  created: "2025-01-26"
+
+  prompt: |
+    You build widgets...
+  ```
+
+  ## Architecture Note
+
+  This format is for SDK-based agents (run via Claude Agent SDK harness).
+  Pilot runs natively in Claude Code and uses CLAUDE.md directly.
+  The .claude/ directory is reserved for native Claude Code features.
+
+  ## After Creating/Modifying Agents
+
+  Run `uv run python -m lib.index` to update the system index.

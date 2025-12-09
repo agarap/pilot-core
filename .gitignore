@@ -1,0 +1,25 @@
+logs/
+output/
+workspaces/
+__pycache__/
+*.pyc
+.env
+.venv/
+
+# Large index file (regenerated locally)
+data/index.json
+
+# macOS metadata
+.DS_Store
+
+# Build artifacts
+dist/
+*.egg-info/
+build/
+
+# IDE
+.idea/
+.vscode/
+
+# Local pilot state
+.pilot/

@@ -1,0 +1,781 @@
+# Research Hypothesis Schema
+# Standalone schema for research hypothesis work items in the pilot system.
+#
+# Research hypotheses are structured claims to be tested through evidence gathering.
+# This schema supports Bayesian reasoning with explicit prior/posterior confidence
+# tracking and structured evidence collection.
+#
+# Usage:
+#   - Create hypothesis items in work_list.json with type: "hypothesis"
+#   - Use @web-researcher for evidence gathering from external sources
+#   - Use @academic-researcher for deep analysis and synthesis
+#   - Track confidence updates as evidence accumulates
+#
+# See also: system/schemas/work_item.yaml for the unified work item schema
+
+name: research_hypothesis
+version: "1.0"
+description: Schema for research hypothesis work items with Bayesian confidence tracking
+
+# =============================================================================
+# Schema Definition
+# =============================================================================
+
+schema:
+
+  # ---------------------------------------------------------------------------
+  # Core Work Item Fields (inherited from work_item schema)
+  # ---------------------------------------------------------------------------
+
+  id:
+    type: string
+    required: true
+    description: |
+      Unique identifier within the work list.
+      Convention: 'h-NNN' for hypotheses (e.g., 'h-001', 'h-042')
+    pattern: "^h-[0-9]{3}$"
+    examples:
+      - "h-001"
+      - "h-015"
+      - "h-100"
+
+  type:
+    type: string
+    required: true
+    const: "hypothesis"
+    description: |
+      Must be "hypothesis" for items following this schema.
+
+  title:
+    type: string
+    required: true
+    max_length: 80
+    description: |
+      Short, scannable title stating the hypothesis claim.
+      Should be phrased as a testable assertion.
+    examples:
+      - "Opus outperforms Sonnet on complex reasoning"
+      - "Feature flags reduce deployment risk"
+      - "Caching reduces API latency by 50%+"
+
+  description:
+    type: string
+    required: true
+    description: |
+      Full hypothesis statement including:
+      - The specific claim being tested
+      - Scope and boundary conditions
+      - Expected mechanism (why this might be true)
+      - Null hypothesis (what would disprove this)
+
+  status:
+    type: enum
+    required: true
+    values:
+      - pending       # Hypothesis defined but not yet investigated
+      - in_progress   # Actively gathering evidence
+      - blocked       # Cannot proceed (missing data, access issues)
+      - completed     # Verdict reached with sufficient evidence
+      - abandoned     # Dropped (no longer relevant or feasible to test)
+    default: pending
+    description: |
+      Current investigation state. A hypothesis is "completed" when
+      a verdict has been reached, regardless of whether supported or refuted.
+
+  priority:
+    type: enum
+    required: false
+    values:
+      - critical  # Blocks major decisions, investigate immediately
+      - high      # Important for near-term planning
+      - medium    # Standard research priority
+      - low       # Exploratory, investigate when time permits
+    default: medium
+    description: |
+      Research priority. Critical hypotheses often relate to
+      architectural decisions or strategic choices.
+
+  dependencies:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      List of work item IDs that must be completed before this
+      hypothesis can be investigated. Often other hypotheses
+      whose conclusions inform this investigation.
+    examples:
+      - ["h-001"]  # Depends on prior hypothesis
+      - ["feat-010", "h-003"]  # Depends on feature and hypothesis
+
+  acceptance_criteria:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      Criteria for considering the investigation complete.
+      Should focus on evidence quality, not specific outcomes.
+    examples:
+      - "Review at least 5 peer-reviewed sources"
+      - "Test on representative sample of N >= 100"
+      - "Achieve statistical significance (p < 0.05)"
+      - "Consult domain expert for methodology review"
+
+  # ---------------------------------------------------------------------------
+  # Hypothesis-Specific Metadata
+  # ---------------------------------------------------------------------------
+
+  metadata:
+    type: object
+    required: true
+    description: |
+      Hypothesis-specific fields for Bayesian tracking and evidence management.
+    fields:
+
+      prior_confidence:
+        type: float
+        range: [0.0, 1.0]
+        required: true
+        description: |
+          Initial confidence in the hypothesis BEFORE gathering evidence.
+
+          Interpretation:
+            0.0  = Certainly false (strong prior against)
+            0.25 = Unlikely (weak evidence against)
+            0.5  = No prior information (maximum uncertainty)
+            0.75 = Likely (weak evidence for)
+            1.0  = Certainly true (strong prior for)
+
+          Guidelines for setting priors:
+            - Base on existing knowledge, not wishful thinking
+            - 0.5 is appropriate when you genuinely don't know
+            - Extreme values (< 0.1 or > 0.9) require strong justification
+            - Document reasoning for prior selection in description
+
+      posterior_confidence:
+        type: float
+        range: [0.0, 1.0]
+        required: false
+        nullable: true
+        default: null
+        description: |
+          Updated confidence AFTER gathering evidence.
+
+          Update rules (informal Bayesian):
+            - Strong evidence for:    +0.15 to +0.25
+            - Moderate evidence for:  +0.05 to +0.15
+            - Weak evidence for:      +0.01 to +0.05
+            - Neutral evidence:       no change
+            - Weak evidence against:  -0.01 to -0.05
+            - Moderate against:       -0.05 to -0.15
+            - Strong evidence against: -0.15 to -0.25
+
+          The posterior should reflect cumulative evidence, not just
+          the most recent finding. Document updates in evidence arrays.
+
+      evidence_for:
+        type: array
+        items: string
+        required: false
+        default: []
+        description: |
+          List of evidence supporting the hypothesis.
+
+          Format each item as: "[Source] Finding description"
+
+          Include:
+            - Source reference (paper, URL, experiment)
+            - Specific finding or data point
+            - Strength assessment (strong/moderate/weak)
+
+          Evidence should be independently verifiable.
+
+      evidence_against:
+        type: array
+        items: string
+        required: false
+        default: []
+        description: |
+          List of evidence contradicting the hypothesis.
+
+          Format each item as: "[Source] Finding description"
+
+          Include counterexamples, conflicting studies, failed
+          predictions, or any data that reduces confidence.
+
+          Note: Absence of expected evidence counts as weak
+          evidence against.
+
+      verdict:
+        type: enum
+        values:
+          - supported      # Evidence supports hypothesis (posterior > prior)
+          - refuted        # Evidence contradicts hypothesis (posterior < prior)
+          - insufficient   # Not enough evidence to update meaningfully
+          - null           # Not yet evaluated
+        default: null
+        required: false
+        description: |
+          Final verdict on the hypothesis.
+
+          Verdict meanings:
+
+          supported:
+            - Posterior confidence significantly higher than prior
+            - Multiple independent sources of confirming evidence
+            - No strong contradicting evidence
+            - Appropriate for decisions based on this being true
+
+          refuted:
+            - Posterior confidence significantly lower than prior
+            - Strong contradicting evidence found
+            - Expected confirming evidence absent
+            - Should NOT base decisions on this being true
+
+          insufficient:
+            - Could not gather enough evidence either way
+            - Sources unavailable or conflicting
+            - More research needed before conclusion
+            - Defer decisions until more evidence available
+
+          null:
+            - Investigation not started or in early stages
+            - No verdict yet reached
+
+      methodology:
+        type: string
+        required: false
+        description: |
+          How the hypothesis will be or was tested.
+
+          Include:
+            - Search strategy (what sources to consult)
+            - Evaluation criteria (what counts as evidence)
+            - Sample requirements (if applicable)
+            - Controls or comparisons (if applicable)
+
+          Good methodology is documented BEFORE investigation begins.
+
+      sources:
+        type: array
+        items: string
+        required: false
+        default: []
+        description: |
+          References consulted during investigation.
+
+          Formats:
+            - URLs: "https://example.com/article"
+            - Papers: "Author et al. (Year). Title. Journal."
+            - Books: "Author. (Year). Title. Publisher."
+            - Internal: "projects/project-name/data/results.json"
+
+          All evidence_for and evidence_against items should
+          reference entries in this sources list.
+
+# =============================================================================
+# Verdict Decision Guide
+# =============================================================================
+
+verdict_guide:
+  description: |
+    Guidelines for reaching verdicts based on evidence and confidence changes.
+
+  supported:
+    criteria:
+      - "Posterior confidence >= prior + 0.15"
+      - "At least 2 independent sources of confirming evidence"
+      - "No strong (> 0.1 impact) contradicting evidence"
+      - "Methodology was followed as specified"
+    confidence_threshold: 0.65
+    notes: |
+      A "supported" verdict means decisions can reasonably be made
+      assuming the hypothesis is true. It does NOT mean certainty.
+
+  refuted:
+    criteria:
+      - "Posterior confidence <= prior - 0.15"
+      - "At least 1 strong contradicting evidence, OR"
+      - "Multiple (3+) moderate contradicting evidence, OR"
+      - "Expected confirming evidence systematically absent"
+    confidence_threshold: 0.35
+    notes: |
+      A "refuted" verdict means the hypothesis should be treated
+      as false for decision-making purposes.
+
+  insufficient:
+    criteria:
+      - "Absolute change in confidence < 0.15"
+      - "Sources unavailable or unreliable"
+      - "Conflicting evidence with no way to resolve"
+      - "Methodology could not be executed"
+    notes: |
+      "Insufficient" is not a failure - it's important information.
+      Document what additional evidence would be needed.
+
+# =============================================================================
+# Status Transitions for Hypotheses
+# =============================================================================
+
+status_transitions:
+  description: |
+    Valid status changes for hypothesis work items.
+
+  valid:
+    - from: pending
+      to: [in_progress, blocked, abandoned]
+      notes: Start investigation, mark blocked, or abandon
+
+    - from: in_progress
+      to: [completed, blocked, pending]
+      notes: |
+        Reach verdict (completed), hit blocker, or pause (pending).
+        Do NOT mark completed without a verdict.
+
+    - from: blocked
+      to: [pending, in_progress, abandoned]
+      notes: Resume when unblocked or abandon if unfeasible
+
+    - from: completed
+      to: [pending]
+      notes: |
+        Reopen only if new significant evidence emerges that
+        warrants re-evaluation. Requires justification.
+
+    - from: abandoned
+      to: [pending]
+      notes: Reconsider if circumstances change
+
+  completion_requirements:
+    - "verdict field MUST be set (supported/refuted/insufficient)"
+    - "posterior_confidence MUST be set"
+    - "At least one entry in evidence_for OR evidence_against"
+    - "methodology field should document what was done"
+
+# =============================================================================
+# Examples
+# =============================================================================
+
+examples:
+
+  # ---------------------------------------------------------------------------
+  # Example 1: Well-formed hypothesis with Bayesian priors
+  # ---------------------------------------------------------------------------
+  well_formed_hypothesis:
+    description: |
+      A properly structured hypothesis ready for investigation.
+      Note the explicit prior with justification, clear methodology,
+      and testable acceptance criteria.
+
+    item:
+      id: "h-001"
+      type: "hypothesis"
+      title: "Opus outperforms Sonnet on complex reasoning tasks"
+      description: |
+        Hypothesis: Claude Opus achieves higher accuracy than Claude Sonnet
+        on multi-step reasoning tasks requiring 5+ inference steps.
+
+        Mechanism: Opus has more parameters and training, potentially
+        enabling better maintenance of context across reasoning chains.
+
+        Null hypothesis: No significant difference in accuracy between
+        models on complex reasoning tasks.
+
+        Prior justification: Set at 0.7 based on Anthropic's documentation
+        positioning Opus for complex tasks and anecdotal user reports.
+        Not higher because concrete benchmarks are sparse.
+      status: "pending"
+      priority: "high"
+      dependencies: []
+      acceptance_criteria:
+        - "Test on at least 100 multi-step reasoning problems"
+        - "Statistical significance (p < 0.05) for accuracy difference"
+        - "Document reasoning chain quality, not just final answer"
+        - "Control for prompt variations"
+      metadata:
+        prior_confidence: 0.7
+        posterior_confidence: null
+        evidence_for:
+          - "[Anthropic Docs] Official documentation recommends Opus for 'complex analysis'"
+          - "[User Reports] Multiple Reddit threads report better Opus performance on math"
+        evidence_against: []
+        verdict: null
+        methodology: |
+          1. Select 100 problems from GSM8K requiring 5+ steps
+          2. Run identical prompts through Opus and Sonnet
+          3. Blind evaluation of final answers (correct/incorrect)
+          4. Qualitative review of reasoning chains
+          5. Statistical comparison (McNemar's test for paired data)
+        sources:
+          - "https://docs.anthropic.com/en/docs/about-claude/models"
+          - "https://reddit.com/r/ClaudeAI/comments/xyz"
+
+  # ---------------------------------------------------------------------------
+  # Example 2: Hypothesis with updated confidence
+  # ---------------------------------------------------------------------------
+  updated_confidence:
+    description: |
+      A hypothesis in progress showing how confidence updates
+      as evidence accumulates. Note the progression from prior
+      to posterior and the balanced evidence collection.
+
+    item:
+      id: "h-002"
+      type: "hypothesis"
+      title: "Caching reduces P95 API latency by 50%+"
+      description: |
+        Hypothesis: Adding Redis caching to the /api/search endpoint
+        will reduce 95th percentile latency from ~800ms to under 400ms.
+
+        Mechanism: Most searches are repeated queries. Caching avoids
+        database round-trips for common patterns.
+
+        Null hypothesis: Caching provides less than 50% P95 improvement.
+      status: "in_progress"
+      priority: "high"
+      dependencies: ["feat-015"]  # Depends on metrics infrastructure
+      acceptance_criteria:
+        - "Measure P95 latency before and after caching"
+        - "Test with production-like query distribution"
+        - "Run for at least 24 hours to capture patterns"
+      metadata:
+        prior_confidence: 0.6
+        posterior_confidence: 0.75
+        evidence_for:
+          - "[Internal Test] Staging environment showed 55% P95 reduction (strong)"
+          - "[Case Study] Similar system at Company X reported 60% improvement (moderate)"
+          - "[Query Analysis] 40% of queries are exact repeats within 1 hour (moderate)"
+        evidence_against:
+          - "[Cache Miss Analysis] Long-tail queries show only 10% cache hit rate (weak)"
+          - "[Memory Constraints] Redis memory limits may force evictions (weak)"
+        verdict: null
+        methodology: |
+          1. Baseline: Collect 24h of P95 latency metrics
+          2. Implementation: Add Redis caching with 1h TTL
+          3. Comparison: Collect 24h of P95 latency metrics post-change
+          4. Analysis: Compare distributions, calculate improvement %
+        sources:
+          - "internal: projects/api-perf/data/baseline-metrics.json"
+          - "internal: projects/api-perf/data/cached-metrics.json"
+          - "https://techblog.companyx.com/caching-wins"
+
+  # ---------------------------------------------------------------------------
+  # Example 3: Completed hypothesis (supported)
+  # ---------------------------------------------------------------------------
+  supported_verdict:
+    description: |
+      A completed hypothesis that was supported by evidence.
+      Note the clear progression from prior to posterior and
+      the documented verdict reasoning.
+
+    item:
+      id: "h-003"
+      type: "hypothesis"
+      title: "Feature flags reduce deployment incident rate"
+      description: |
+        Hypothesis: Implementing feature flags for all new features
+        reduces production incident rate by at least 30%.
+
+        Mechanism: Flags enable instant rollback without deployment,
+        allow gradual rollout to catch issues early, and separate
+        deployment from release.
+      status: "completed"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Compare incident rates before/after feature flag adoption"
+        - "Control for other process changes"
+        - "Minimum 3 months of data in each period"
+      metadata:
+        prior_confidence: 0.65
+        posterior_confidence: 0.85
+        evidence_for:
+          - "[Internal Metrics] Incident rate dropped 42% post-adoption (strong)"
+          - "[Rollback Data] 8 incidents resolved via flag toggle vs deployment (strong)"
+          - "[Industry Study] LaunchDarkly reports 50% average reduction (moderate)"
+          - "[Team Survey] 90% of engineers report higher deployment confidence (weak)"
+        evidence_against:
+          - "[Complexity] 2 incidents caused by flag misconfiguration (weak)"
+          - "[Overhead] 15% increase in code complexity metrics (weak)"
+        verdict: "supported"
+        methodology: |
+          1. Historical analysis of 6 months pre-flags
+          2. 6 month observation post-adoption
+          3. Categorize incidents by preventability via flags
+          4. Control analysis for other process changes
+        sources:
+          - "internal: data/incidents-2023.json"
+          - "internal: data/incidents-2024.json"
+          - "https://launchdarkly.com/case-studies/incident-reduction"
+
+  # ---------------------------------------------------------------------------
+  # Example 4: Completed hypothesis (refuted)
+  # ---------------------------------------------------------------------------
+  refuted_verdict:
+    description: |
+      A completed hypothesis that was refuted by evidence.
+      Refutation is a valid and valuable research outcome.
+
+    item:
+      id: "h-004"
+      type: "hypothesis"
+      title: "GraphQL reduces frontend development time"
+      description: |
+        Hypothesis: Migrating from REST to GraphQL will reduce
+        frontend development time by 25% due to flexible queries.
+
+        Null hypothesis: GraphQL does not significantly reduce
+        frontend development time compared to REST.
+      status: "completed"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Compare development time for similar features"
+        - "Survey frontend developers on experience"
+        - "Account for learning curve"
+      metadata:
+        prior_confidence: 0.55
+        posterior_confidence: 0.30
+        evidence_for:
+          - "[Flexibility] Reduced over-fetching in 3 features (moderate)"
+          - "[Developer Feedback] 2/5 developers preferred GraphQL queries (weak)"
+        evidence_against:
+          - "[Time Tracking] No significant time reduction observed (strong)"
+          - "[Complexity] Schema management overhead increased total time (strong)"
+          - "[Learning Curve] 3 weeks lost to GraphQL learning (moderate)"
+          - "[Tooling] Debugging more difficult than REST (moderate)"
+          - "[Industry Survey] Mixed results in similar migrations (moderate)"
+        verdict: "refuted"
+        methodology: |
+          1. Time tracking on 5 comparable features (REST vs GraphQL)
+          2. Developer survey (N=5)
+          3. Code complexity analysis
+          4. Literature review of similar migrations
+        sources:
+          - "internal: data/feature-time-tracking.csv"
+          - "internal: docs/graphql-retro.md"
+          - "https://blog.apollographql.com/graphql-vs-rest-adoption"
+
+  # ---------------------------------------------------------------------------
+  # Example 5: Completed hypothesis (insufficient evidence)
+  # ---------------------------------------------------------------------------
+  insufficient_verdict:
+    description: |
+      A completed hypothesis where evidence was insufficient.
+      Documents what would be needed to reach a verdict.
+
+    item:
+      id: "h-005"
+      type: "hypothesis"
+      title: "Microservices improve team velocity at scale"
+      description: |
+        Hypothesis: Teams larger than 10 engineers show 20%+ higher
+        velocity when working on microservices vs monolith.
+      status: "completed"
+      priority: "low"
+      dependencies: []
+      acceptance_criteria:
+        - "Compare velocity metrics across architectures"
+        - "Control for team size and domain complexity"
+      metadata:
+        prior_confidence: 0.5
+        posterior_confidence: 0.55
+        evidence_for:
+          - "[Case Study] Spotify reports improved autonomy (weak, confounders)"
+          - "[Theory] Conway's Law suggests alignment benefits (weak)"
+        evidence_against:
+          - "[Case Study] Segment migrated back to monolith (weak, different context)"
+          - "[Overhead] Coordination costs may offset gains (theoretical)"
+        verdict: "insufficient"
+        methodology: |
+          Attempted literature review and case study analysis.
+          Could not control for confounding variables.
+        sources:
+          - "https://engineering.atspotify.com/microservices"
+          - "https://segment.com/blog/goodbye-microservices"
+      notes: |
+        Verdict: insufficient
+
+        Reasons:
+        - No controlled studies available
+        - Case studies have too many confounding variables
+        - Our organization too small for internal comparison
+
+        To reach verdict, would need:
+        - Controlled experiment (infeasible)
+        - Access to internal metrics from similar-sized companies
+        - Longitudinal study with architecture transition
+
+# =============================================================================
+# Agent Integration
+# =============================================================================
+
+integrations:
+
+  web_researcher:
+    description: |
+      The @web-researcher agent gathers external evidence for hypotheses.
+
+    usage: |
+      Invoke for:
+        - Finding academic papers and studies
+        - Locating industry case studies and reports
+        - Gathering documentation and specifications
+        - Searching for counterexamples
+
+    invocation: |
+      uv run python -m lib.invoke web-researcher "
+        Research hypothesis h-001: [hypothesis title]
+
+        Find evidence for and against:
+        [hypothesis description]
+
+        Specifically looking for:
+        - Academic studies on [topic]
+        - Industry benchmarks
+        - Case studies from similar contexts
+
+        Return structured evidence with source citations.
+      "
+
+    output_format: |
+      Web researcher should return:
+        - evidence_for: [] with source citations
+        - evidence_against: [] with source citations
+        - sources: [] full references
+        - suggested_posterior: float (optional)
+
+  academic_researcher:
+    description: |
+      The @academic-researcher agent performs deep analysis and synthesis.
+
+    usage: |
+      Invoke for:
+        - Synthesizing conflicting evidence
+        - Evaluating methodology quality
+        - Generating alternative hypotheses
+        - Deep literature review
+        - Statistical analysis guidance
+
+    invocation: |
+      uv run python -m lib.invoke academic-researcher "
+        Analyze evidence for hypothesis h-001:
+
+        Prior confidence: 0.6
+
+        Evidence for:
+        - [list evidence]
+
+        Evidence against:
+        - [list evidence]
+
+        Questions:
+        1. How should this evidence update our confidence?
+        2. What are the key uncertainties?
+        3. What additional evidence would be most valuable?
+      "
+
+    output_format: |
+      Academic researcher should return:
+        - confidence_analysis: Bayesian reasoning for update
+        - synthesis: Integration of conflicting evidence
+        - uncertainties: Key unknowns and their impact
+        - recommendations: Next steps for investigation
+
+  verifier:
+    description: |
+      The @verifier agent can check hypothesis completion criteria.
+
+    usage: |
+      Invoke to verify a hypothesis is ready for completion:
+        - All acceptance criteria addressed
+        - Evidence properly sourced
+        - Verdict justified by evidence
+        - Methodology followed
+
+    invocation: |
+      uv run python -m lib.invoke verifier "
+        Verify hypothesis h-001 is ready for completion.
+
+        Check:
+        - Verdict matches evidence balance
+        - Posterior confidence justified
+        - All acceptance criteria addressed
+        - Sources are accessible and cited
+      "
+
+# =============================================================================
+# Workflow Integration
+# =============================================================================
+
+workflow:
+  description: |
+    How hypothesis work items integrate with the pilot workflow.
+
+  creation:
+    - "Hypotheses created by Pilot during task decomposition"
+    - "Can also be created by @initializer for research projects"
+    - "Must set prior_confidence with documented reasoning"
+
+  investigation:
+    steps:
+      - step: 1
+        action: "Pilot assigns hypothesis to appropriate researcher"
+        agents: ["@web-researcher", "@academic-researcher"]
+
+      - step: 2
+        action: "Researcher gathers evidence"
+        updates: ["evidence_for", "evidence_against", "sources"]
+
+      - step: 3
+        action: "Update posterior_confidence based on evidence"
+        notes: "Document reasoning for confidence change"
+
+      - step: 4
+        action: "Reach verdict when acceptance criteria met"
+        updates: ["verdict", "status -> completed"]
+
+      - step: 5
+        action: "Report findings to Pilot for decision-making"
+
+  tracking:
+    - "Use work_tracker or feature_tracker with type: hypothesis"
+    - "Hypotheses can have dependencies on other work items"
+    - "Milestones can include hypotheses as deliverables"
+
+# =============================================================================
+# Best Practices
+# =============================================================================
+
+best_practices:
+
+  formulating_hypotheses:
+    - "State as testable, falsifiable claims"
+    - "Be specific about scope and conditions"
+    - "Include the mechanism (why this might be true)"
+    - "Define what would constitute refutation"
+
+  setting_priors:
+    - "0.5 when genuinely uncertain (default to uncertainty)"
+    - "Document reasoning for non-0.5 priors"
+    - "Avoid extreme priors (< 0.1 or > 0.9) without strong justification"
+    - "Consider base rates when applicable"
+
+  gathering_evidence:
+    - "Seek disconfirming evidence actively"
+    - "Weight evidence by source quality and relevance"
+    - "Document source accessibility for reproducibility"
+    - "Distinguish strong, moderate, and weak evidence"
+
+  updating_confidence:
+    - "Update incrementally as evidence arrives"
+    - "Consider evidence independence (avoid double-counting)"
+    - "Be willing to update in either direction"
+    - "Large updates (> 0.2) require strong justification"
+
+  reaching_verdicts:
+    - "Insufficient is a valid and valuable verdict"
+    - "Document what would change the verdict"
+    - "Verdicts inform decisions, not certainty"
+    - "Periodically revisit as new evidence emerges"

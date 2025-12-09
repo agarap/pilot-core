@@ -1,0 +1,37 @@
+# Notion Sync Configuration
+# See docs/designs/notion-sync-design.md for full documentation
+
+enabled: true
+sync_on_commit: true  # post-commit hook triggers sync
+
+# Notion API configuration (secrets in env vars or .env file)
+# Set these environment variables:
+#   NOTION_API_KEY - Your Notion integration token
+#   NOTION_PARENT_PAGE_ID - The parent page ID where databases will be created
+#
+# To find your parent page ID:
+# 1. Open your Notion page in the browser
+# 2. The URL will be: https://notion.so/Your-Page-abc123def456...
+# 3. The ID is the 32-character string at the end (with or without dashes)
+#
+# You can also set these values directly below instead of using env vars:
+parent_page_id: "2c258ffbf0e180c8a214f0e9562298d5"  # Can also set via NOTION_PARENT_PAGE_ID env var
+
+projects:
+  - path: projects/next-gen-search-index
+    notion_parent_page: "Research Projects"
+    sync_features: true
+    sync_research_outputs: false  # MVP: metadata only
+
+  - path: projects/work/parallel/gtm
+    notion_parent_page: "Work/Parallel"
+    sync_type: documents
+
+  - path: projects/work/parallel/analysis
+    notion_parent_page: "Work/Parallel"
+    sync_type: documents
+
+  - path: projects/personal/my-health
+    notion_parent_page: "Personal/Health"
+    sync_type: documents
+    privacy: private

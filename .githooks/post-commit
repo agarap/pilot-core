@@ -1,0 +1,88 @@
+#!/bin/bash
+# Post-commit hook for pilot system
+#
+# After each commit:
+# 1. Records commit telemetry (rules checked, files changed)
+# 2. Removes REVIEW_APPROVED marker
+# 3. Prompts for knowledge capture on significant commits
+
+# Get the actual git directory (handles worktrees correctly)
+GIT_DIR=$(git rev-parse --git-dir)
+REVIEW_MARKER="$GIT_DIR/REVIEW_APPROVED"
+REPO_ROOT=$(git rev-parse --show-toplevel)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Record commit telemetry
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Get commit metadata
+COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+FILES_CHANGED=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | wc -l | tr -d ' ')
+USER="$(git config user.name) <$(git config user.email)>"
+
+# Determine which rules were checked based on what pre-commit runs
+# The pre-commit hook checks these enforcement rules:
+RULES_CHECKED=""
+
+# 1. git-reviewer: Always checked unless bypassed or gitignore-only
+if [ "$PILOT_SKIP_REVIEW" != "1" ]; then
+    RULES_CHECKED="git-reviewer"
+fi
+
+# 2. web-import: Checked if any .py files were in the commit
+PY_FILES=$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null | grep '\.py$' || true)
+if [ -n "$PY_FILES" ]; then
+    if [ -n "$RULES_CHECKED" ]; then
+        RULES_CHECKED="$RULES_CHECKED,web-import"
+    else
+        RULES_CHECKED="web-import"
+    fi
+fi
+
+# 3. task-tool: Checked if logs/agents/ directory exists
+if [ -d "$REPO_ROOT/logs/agents" ]; then
+    if [ -n "$RULES_CHECKED" ]; then
+        RULES_CHECKED="$RULES_CHECKED,task-tool"
+    else
+        RULES_CHECKED="task-tool"
+    fi
+fi
+
+# 4. agent-trailer: Always checked by commit-msg hook unless bypassed
+if [ "$PILOT_SKIP_AGENT_TRAILER" != "1" ]; then
+    if [ -n "$RULES_CHECKED" ]; then
+        RULES_CHECKED="$RULES_CHECKED,agent-trailer"
+    else
+        RULES_CHECKED="agent-trailer"
+    fi
+fi
+
+# Record telemetry (non-blocking - failures should not break post-commit)
+uv run python -m lib.commit_telemetry \
+    --commit "$COMMIT_SHA" \
+    --branch "$BRANCH" \
+    --files "$FILES_CHANGED" \
+    --rules "$RULES_CHECKED" \
+    --user "$USER" 2>/dev/null || true
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Clean up review marker after successful commit
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -f "$REVIEW_MARKER" ]; then
+    rm -f "$REVIEW_MARKER"
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Knowledge capture check (Opportunity 5)
+# Prompts for lesson/decision capture on significant commits
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Only run if PILOT_SKIP_KNOWLEDGE_CHECK is not set
+if [ "$PILOT_SKIP_KNOWLEDGE_CHECK" != "1" ]; then
+    # Run knowledge check (non-blocking, output goes to terminal)
+    uv run python -m lib.knowledge_check 2>/dev/null || true
+fi
+
+exit 0

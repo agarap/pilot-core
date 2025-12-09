@@ -1,0 +1,172 @@
+#!/bin/bash
+# Commit-msg hook: Validate Agent trailer in commit messages
+#
+# This hook verifies:
+#   1. Commit message contains an `Agent:` trailer line
+#   2. Agent name is in the known agents list
+#
+# Format:
+#   Some commit message
+#
+#   Agent: builder
+#   Co-Authored-By: Claude <noreply@anthropic.com>
+#
+# Bypass (logged to logs/bypasses/):
+#   - PILOT_SKIP_AGENT_TRAILER=1 git commit -m "manual commit"
+
+set -e
+
+# Get repo root for logging
+REPO_ROOT=$(git rev-parse --show-toplevel)
+BYPASS_LOG_DIR="$REPO_ROOT/logs/bypasses"
+
+# Known agents list
+KNOWN_AGENTS=(
+    "academic-researcher"
+    "builder"
+    "company-researcher"
+    "email-agent"
+    "git-reviewer"
+    "initializer"
+    "parallel-results-searcher"
+    "verifier"
+    "web-researcher"
+)
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Helper functions
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+log_bypass() {
+    local reason="$1"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local date_part=$(date +"%Y-%m-%d")
+
+    # Create bypass log directory if needed
+    mkdir -p "$BYPASS_LOG_DIR"
+
+    # Log the bypass event
+    echo "---" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "timestamp: $timestamp" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "reason: $reason" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "user: $(git config user.name) <$(git config user.email)>" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "branch: $(git rev-parse --abbrev-ref HEAD)" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "hook: commit-msg" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "" >> "$BYPASS_LOG_DIR/$date_part.log"
+}
+
+is_known_agent() {
+    local agent="$1"
+    for known in "${KNOWN_AGENTS[@]}"; do
+        if [ "$agent" = "$known" ]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
+print_known_agents() {
+    echo "Known agents:"
+    for agent in "${KNOWN_AGENTS[@]}"; do
+        echo "  - $agent"
+    done
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for bypass via environment variable
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$PILOT_SKIP_AGENT_TRAILER" = "1" ]; then
+    echo ""
+    echo "⚠️  BYPASSING Agent trailer check (PILOT_SKIP_AGENT_TRAILER=1)"
+    echo ""
+    log_bypass "PILOT_SKIP_AGENT_TRAILER environment variable"
+    # Record telemetry (non-blocking - failures should not break the commit)
+    uv run python -m lib.bypass_telemetry \
+        --reason "PILOT_SKIP_AGENT_TRAILER environment variable" \
+        --user "$(git config user.name) <$(git config user.email)>" \
+        --branch "$(git rev-parse --abbrev-ref HEAD)" \
+        --files "" \
+        --hook "commit-msg" 2>/dev/null || true
+    exit 0
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Read commit message from file (passed as $1)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+COMMIT_MSG_FILE="$1"
+
+if [ ! -f "$COMMIT_MSG_FILE" ]; then
+    echo "Error: Commit message file not found: $COMMIT_MSG_FILE"
+    exit 1
+fi
+
+COMMIT_MSG=$(cat "$COMMIT_MSG_FILE")
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for Agent: trailer
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AGENT_LINE=$(echo "$COMMIT_MSG" | grep -E "^Agent: " || true)
+
+if [ -z "$AGENT_LINE" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ COMMIT BLOCKED: Missing Agent trailer"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "All commits must include an Agent: trailer identifying"
+    echo "which agent created the changes."
+    echo ""
+    echo "Expected format:"
+    echo "  Your commit message here"
+    echo ""
+    echo "  Agent: builder"
+    echo "  Co-Authored-By: Claude <noreply@anthropic.com>"
+    echo ""
+    print_known_agents
+    echo ""
+    echo "Emergency bypass (logged):"
+    echo "  PILOT_SKIP_AGENT_TRAILER=1 git commit -m 'message'"
+    echo ""
+    exit 1
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Extract and validate agent name
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AGENT_NAME=$(echo "$AGENT_LINE" | sed 's/^Agent: //' | tr -d '[:space:]')
+
+if [ -z "$AGENT_NAME" ]; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ COMMIT BLOCKED: Empty Agent trailer"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "The Agent: trailer was found but the agent name is empty."
+    echo ""
+    print_known_agents
+    echo ""
+    exit 1
+fi
+
+if ! is_known_agent "$AGENT_NAME"; then
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "❌ COMMIT BLOCKED: Unknown agent '$AGENT_NAME'"
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo ""
+    echo "The agent '$AGENT_NAME' is not in the known agents list."
+    echo ""
+    print_known_agents
+    echo ""
+    echo "If this is a new agent, add it to .githooks/commit-msg"
+    echo ""
+    exit 1
+fi
+
+echo "✓ Agent trailer verified: $AGENT_NAME"
+
+exit 0

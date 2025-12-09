@@ -1,0 +1,57 @@
+name: web-access-policy
+description: Enforces Parallel API-only web access and proper tool selection
+priority: 95
+when: '*'  # Universal - applies to ALL agents
+
+rule: |
+  ## Web Access Policy: Parallel API Only
+
+  ALL web access MUST use Parallel API tools. This is non-negotiable.
+
+  ### Enforcement Rules
+
+  1. **Never use direct HTTP libraries**
+     - NO: requests, httpx, urllib, aiohttp
+     - NO: BeautifulSoup, Scrapy, Selenium
+     - YES: tools/web_search.py, tools/web_fetch.py
+
+  2. **Quick lookups vs Research**
+     Quick lookup (OK to use web_search/web_fetch):
+     - Finding a specific URL
+     - Extracting content from one known page
+     - Single fact verification
+     - Checking if something exists
+
+     Research (MUST use parallel_task):
+     - Comparing multiple sources
+     - Understanding a topic deeply
+     - Gathering evidence for claims
+     - Analyzing trends or patterns
+     - Anything requiring citations
+     - Multi-step information gathering
+
+  3. **Entity Discovery**
+     Use parallel_findall when:
+     - Finding multiple companies/people/entities
+     - Discovering entities matching criteria
+     - Building lists of similar things
+
+  4. **Implementation**
+     When implementing web access in tools:
+     - Import from tools.web_search or tools.web_fetch
+     - Never import requests/httpx directly
+     - All web tools must use PARALLEL_API_KEY
+
+  5. **Agent Instructions**
+     Agents must be instructed to:
+     - Use CLI tools via: uv run python -m tools <tool_name>
+     - Choose parallel_task for any non-trivial research
+     - Never attempt to bypass these restrictions
+
+  ### Rationale
+
+  - Parallel API provides consistent rate limiting and retry logic
+  - Centralized API key management via PARALLEL_API_KEY
+  - Better cost tracking and usage monitoring
+  - Automatic result caching in data/parallel_*/
+  - Consistent provenance and citation tracking

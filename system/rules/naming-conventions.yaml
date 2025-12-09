@@ -1,0 +1,206 @@
+name: naming-conventions
+description: Comprehensive naming standards for folders, files, and artifacts
+priority: 90
+when:
+  - agent: pilot
+  - agent: builder
+  - agent: web-researcher
+  - agent: academic-researcher
+  - agent: git-reviewer
+
+rule: |
+  ## Universal Principles
+
+  1. **Lowercase-hyphenated**: All names use lowercase with hyphens (no underscores except prefixes)
+  2. **Descriptive**: Name describes content, not process
+  3. **Consistent**: Same pattern for same type across codebase
+  4. **Sortable**: Use YYYY-MM-DD dates for chronological sorting
+  5. **No spaces**: Never use spaces in any names
+
+  ---
+
+  ## Folder Naming
+
+  ### Project Folders
+  ```
+  projects/{namespace}/{category}/{project-name}/
+  ```
+
+  **Pattern**: `{descriptor}-{qualifier}`
+  - ✅ `implant-esthetics-review`
+  - ✅ `gtm-strategy`
+  - ✅ `cardiovascular-research`
+  - ❌ `research-dental-implants-2025-final` (too long)
+  - ❌ `ProjectOne` (wrong case)
+  - ❌ `my_project` (underscores)
+
+  ### Subfolders
+  - `_working/` - Intermediate artifacts (underscore prefix = not final)
+  - `.runs/` - Run manifests (dot prefix = metadata)
+  - `agent-outputs/` - Inside _working only
+  - `data/` - Raw data inside _working
+  - `scripts/` - Tools inside _working
+  - `archive/` - Old versions
+
+  ---
+
+  ## File Naming
+
+  ### FINAL Artifacts (top-level in project)
+
+  **Research/Analysis Documents**
+  Pattern: `{topic}-{type}-{YYYY}.md`
+  - `comprehensive-review-2025.md`
+  - `executive-summary-2025.md`
+  - `gtm-strategy-2025.md`
+  - `cardiovascular-recommendations-2025.md`
+
+  **Status/Meta Documents**
+  Pattern: `{TYPE}.md` (uppercase for standard files)
+  - `README.md` - Project overview
+  - `VERIFICATION.md` - Quality report
+  - `CHANGELOG.md` - Version history
+
+  ### INTERMEDIATE Files (_working/ directory)
+
+  **Agent Outputs**
+  Pattern: `agent-{agent}-{topic}-{YYYYMMDD}-{HHMMSS}.md`
+  - `agent-academic-soft-tissue-20251127-143022.md`
+  - `agent-web-competitor-analysis-20251127-090500.md`
+
+  **Drafts/Working Docs**
+  Pattern: `draft-{descriptor}-v{N}.md`
+  - `draft-synthesis-v1.md`
+  - `draft-executive-summary-v3.md`
+
+  **Progress/Tracking**
+  Pattern: `{action}-{target}.md`
+  - `progress-tracking.md`
+  - `gap-analysis.md`
+  - `research-notes.md`
+
+  ### Data Files
+
+  **Raw Data**
+  Pattern: `{content}-raw.{ext}`
+  - `pmids-raw.txt`
+  - `citations-raw.json`
+  - `metrics-raw.csv`
+
+  **Processed Data**
+  Pattern: `{content}-{state}.{ext}`
+  - `citations-verified.json`
+  - `pmids-deduped.txt`
+  - `metrics-cleaned.csv`
+
+  ### Scripts/Tools
+
+  Pattern: `{action}_{target}.py`
+  - `verify_citations.py`
+  - `extract_pmids.py`
+  - `generate_report.py`
+
+  ---
+
+  ## Namespace-Specific Patterns
+
+  ### Personal Health Files
+  Add health context to distinguish from work:
+  - `health-{condition}-analysis-2025.md`
+  - `treatment-{name}-research-2025.md`
+  - `screening-protocol-{condition}-2025.md`
+
+  ### Work/Parallel Files
+  Add business context:
+  - `competitive-analysis-{market}-2025.md`
+  - `gtm-{segment}-strategy-2025.md`
+  - `recruitment-{role}-pipeline-2025.md`
+
+  ---
+
+  ## Date Formatting
+
+  **In Filenames**
+  - Year only for finals: `2025`
+  - Full date for intermediates: `20251127`
+  - With time for multiple daily: `20251127-143022`
+
+  **In Content**
+  - ISO format: `2025-11-27`
+  - With time: `2025-11-27T14:30:22`
+
+  ---
+
+  ## Version Control
+
+  **For Documents**
+  - Finals: Year in filename (`-2025.md`)
+  - Drafts: Version number (`-v1.md`, `-v2.md`)
+  - Never: `final-final-v2-REAL.md`
+
+  **For Code**
+  - Use git, not filename versions
+  - Exception: One-off scripts can have `_v2.py`
+
+  ---
+
+  ## Anti-Patterns to Avoid
+
+  ❌ **Bad naming examples:**
+  - `research.md` (too generic)
+  - `Final Report Nov 27.md` (spaces, inconsistent date)
+  - `dental_implant_research_FINAL_v3_REVIEWED.md` (too many qualifiers)
+  - `temp.md`, `test.md`, `asdf.md` (meaningless)
+  - `Copy of analysis.md` (version control anti-pattern)
+  - `analysis (1).md` (OS duplicate pattern)
+
+  ---
+
+  ## Migration/Cleanup
+
+  When consolidating or renaming:
+
+  ### Old File → New Name
+  ```
+  research.md → comprehensive-review-2025.md
+  dental_stuff.md → _working/agent-academic-dental-20251127.md
+  FINAL-v2.md → executive-summary-2025.md
+  notes.txt → _working/research-notes.md
+  ```
+
+  ### Consolidation Pattern
+  When merging fragmented work:
+  1. Choose most descriptive name for final
+  2. Move fragments to `_working/consolidated/`
+  3. Create single final with proper name
+
+  ---
+
+  ## Enforcement Checklist
+
+  **Before creating any file:**
+  - [ ] Lowercase with hyphens?
+  - [ ] Descriptive of content?
+  - [ ] Correct location (_working/ vs top-level)?
+  - [ ] Appropriate pattern for type?
+  - [ ] Date format correct?
+
+  **Git-reviewer should reject:**
+  - Files with spaces in names
+  - Mixed case in new files (except README, VERIFICATION, etc.)
+  - Underscores except in prefixes/scripts
+  - Generic names (research.md, data.json)
+  - Version control anti-patterns (final-final-v2.md)
+
+  ---
+
+  ## Quick Reference
+
+  | Type | Location | Pattern | Example |
+  |------|----------|---------|---------|
+  | Final Research | Top-level | `{topic}-{type}-{YYYY}.md` | `implant-esthetics-review-2025.md` |
+  | Agent Output | `_working/` | `agent-{name}-{topic}-{DATE}.md` | `agent-academic-soft-tissue-20251127.md` |
+  | Draft | `_working/` | `draft-{name}-v{N}.md` | `draft-synthesis-v2.md` |
+  | Data Raw | `_working/data/` | `{content}-raw.{ext}` | `pmids-raw.txt` |
+  | Script | `_working/scripts/` | `{action}_{target}.py` | `verify_citations.py` |
+  | Status Doc | Top-level | `{TYPE}.md` | `README.md`, `VERIFICATION.md` |

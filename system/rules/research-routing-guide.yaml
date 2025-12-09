@@ -1,0 +1,96 @@
+name: research-routing-guide
+description: Clear decision criteria for routing research projects to correct namespaces
+priority: 95
+when:
+  - agent: pilot
+  - agent: builder
+  - agent: web-researcher
+  - agent: academic-researcher
+
+rule: |
+  ## Core Principle: work/ = ONLY Parallel.ai
+
+  Everything else goes to personal/, including ALL family members' professional work.
+
+  ## Research Project Routing Decision Tree
+
+  ```
+  Research Request
+       │
+       ▼
+  Is this for Parallel.ai?
+       │
+       ├─ YES → work/parallel/ or work/research/
+       │
+       └─ NO → Is this health-related?
+               │
+               ├─ YES → WHOSE health?
+               │         │
+               │         ├─ Mine → personal/my-health/{category}/
+               │         ├─ Wife → personal/wife-health/{category}/
+               │         ├─ Children → personal/children-health/{category}/
+               │         ├─ Parents → personal/parents-health/{category}/
+               │         └─ Professional for family → personal/friends-and-family/professional-research/
+               │
+               └─ NO → personal/finance/ or personal/friends-and-family/
+                       - Investment research
+                       - Family matters
+                       - Professional work for family/friends
+  ```
+
+  ## Quick Reference Examples
+
+  | Research Type | Goes To | Why |
+  |---------------|---------|-----|
+  | Dental implants for sister-in-law's practice | personal/friends-and-family/professional-research/sister-in-law-dental-practice/ | Family professional = personal |
+  | PCSK9 inhibitors for wife's work | personal/friends-and-family/professional-research/wife-medical-work/ | Family work = personal |
+  | Competitive analysis for wife's company | personal/friends-and-family/ | Not Parallel.ai = personal |
+  | GTM strategy for Parallel | work/parallel/gtm/ | Parallel.ai work |
+  | AI agent frameworks for Parallel | work/research/agent-frameworks/ | Parallel.ai research |
+  | Personal cholesterol management | personal/my-health/cardiovascular-and-cholesterol/ | Personal health |
+  | Investment research | personal/finance/ | Personal finance |
+
+  ## Key Questions to Ask
+
+  When routing is unclear, Pilot should ask:
+
+  1. "Is this research/work specifically for Parallel.ai?"
+     - YES → work/
+     - NO → personal/
+
+  2. "If health-related, whose health is this for?"
+     - You → personal/my-health/
+     - Wife → personal/wife-health/
+     - Children → personal/children-health/
+     - Parents → personal/parents-health/
+     - Professional for family → personal/friends-and-family/professional-research/
+
+  3. "What's the purpose?"
+     - Parallel.ai business → work/
+     - Personal health condition → personal/{person}-health/
+     - Family member's professional needs → personal/friends-and-family/professional-research/
+     - Personal finance → personal/finance/
+
+  ## Privacy Implications
+
+  - **personal/** content NEVER appears in work contexts
+  - **work/** content CAN be referenced in personal contexts
+  - Family members' professional work gets same privacy as health data
+
+  ## File Naming Within Namespaces
+
+  Once routed to correct namespace, follow naming conventions:
+
+  **Personal health/professional research:**
+  - Add context: `pcsk9-inhibitors-wifes-work-2025.md`
+  - Or keep generic if sensitive: `pcsk9-research-2025.md`
+
+  **Work/Parallel.ai research:**
+  - Be specific: `parallel-gtm-competitor-analysis-2025.md`
+  - Include Parallel context: `parallel-devrel-strategy-2025.md`
+
+  ## Enforcement
+
+  - Pilot checks this guide before creating projects
+  - Git-reviewer ensures no personal content in work commits
+  - When ambiguous, ALWAYS ASK rather than guess

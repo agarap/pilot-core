@@ -1,0 +1,872 @@
+# Email Task Schema
+# Standalone schema for email triage work items in the pilot system.
+#
+# Email tasks represent emails requiring action: responses, delegation,
+# deferral, archiving, or review. This schema supports EA-style email
+# triage with priority assignment and response workflow tracking.
+#
+# Usage:
+#   - Create email task items in work_list.json with type: "email_task"
+#   - Use @email-agent for prioritization and triage
+#   - Track actions and response drafts for each email
+#   - Record daily triage results in projects/email/triage-YYYY-MM-DD.md
+#
+# See also: system/schemas/work_item.yaml for the unified work item schema
+
+name: email_task
+version: "1.0"
+description: Schema for email triage work items with action tracking and response workflow
+
+# =============================================================================
+# Schema Definition
+# =============================================================================
+
+schema:
+
+  # ---------------------------------------------------------------------------
+  # Core Work Item Fields (inherited from work_item schema)
+  # ---------------------------------------------------------------------------
+
+  id:
+    type: string
+    required: true
+    description: |
+      Unique identifier within the work list.
+      Convention: 'email-NNN' for email tasks (e.g., 'email-001', 'email-042')
+    pattern: "^email-[0-9]{3}$"
+    examples:
+      - "email-001"
+      - "email-015"
+      - "email-100"
+
+  type:
+    type: string
+    required: true
+    const: "email_task"
+    description: |
+      Must be "email_task" for items following this schema.
+
+  title:
+    type: string
+    required: true
+    max_length: 80
+    description: |
+      Short, scannable title for the email task.
+      Convention: "[Action] Subject from Sender"
+    examples:
+      - "Respond: Q4 planning meeting from John"
+      - "Delegate: Vendor inquiry to procurement"
+      - "Review: Weekly metrics report from Analytics"
+
+  description:
+    type: string
+    required: true
+    description: |
+      Brief context about the email and why it needs attention.
+      Should include:
+      - What the email is about
+      - Why this action was chosen
+      - Any relevant context or urgency
+
+  status:
+    type: enum
+    required: true
+    values:
+      - pending       # Email identified, action not started
+      - in_progress   # Actively being handled (drafting response, etc.)
+      - blocked       # Cannot proceed (waiting for info, approval)
+      - completed     # Action taken (sent, delegated, archived)
+      - abandoned     # No longer relevant (email deleted, superseded)
+    default: pending
+    description: |
+      Current handling state. Email tasks move to "completed" once
+      the designated action has been taken.
+
+  priority:
+    type: enum
+    required: true
+    values:
+      - critical  # VIP sender, deadline today, blocks other work
+      - high      # Important sender, deadline this week
+      - medium    # Standard priority, handle when able
+      - low       # FYI, newsletters, can wait indefinitely
+    default: medium
+    description: |
+      Priority determines handling order. Assigned based on:
+      - Sender (VIP senders = critical/high)
+      - Content (urgent keywords, deadlines)
+      - User's stated daily priorities
+      - Time sensitivity
+
+  dependencies:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      List of work item IDs that must be completed before this
+      email can be handled. Rarely used for email tasks, but
+      applicable when a response depends on other work.
+    examples:
+      - ["feat-010"]  # Need to finish feature before replying
+      - ["email-003"]  # Need to respond to earlier email first
+
+  acceptance_criteria:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      Criteria for considering the email task complete.
+      Auto-generated based on action type.
+    examples:
+      - "Response sent and acknowledged"
+      - "Email forwarded to delegate with context"
+      - "Deferred until deadline - reminder set"
+
+  # ---------------------------------------------------------------------------
+  # Email-Specific Metadata
+  # ---------------------------------------------------------------------------
+
+  metadata:
+    type: object
+    required: true
+    description: |
+      Email-specific fields for tracking the original email and action workflow.
+    fields:
+
+      email_id:
+        type: string
+        required: true
+        description: |
+          Unique identifier from the email system (Gmail message ID).
+          Used to reference the specific email for actions.
+        examples:
+          - "18d5a2f3b4c6e7f8"
+          - "msg-1234567890"
+
+      thread_id:
+        type: string
+        required: true
+        description: |
+          Thread/conversation identifier for grouping related emails.
+          Used to fetch full conversation context and for replies.
+        examples:
+          - "18d5a2f3b4c6e7f8"
+          - "thread-9876543210"
+
+      sender:
+        type: string
+        required: true
+        description: |
+          Email sender address or name.
+          Format: "Name <email@domain.com>" or just "email@domain.com"
+        examples:
+          - "John Smith <john@company.com>"
+          - "ceo@important-client.com"
+          - "newsletter@service.com"
+
+      subject:
+        type: string
+        required: true
+        description: |
+          Email subject line (unmodified from original).
+        examples:
+          - "Re: Q4 Planning Meeting - Agenda Review"
+          - "URGENT: Contract deadline tomorrow"
+          - "Weekly Analytics Report - Nov 2024"
+
+      received_at:
+        type: datetime
+        required: true
+        description: |
+          ISO 8601 timestamp when the email was received.
+          Used for tracking response timeliness and overdue detection.
+        examples:
+          - "2024-11-27T09:30:00Z"
+          - "2024-11-26T14:45:23-08:00"
+
+      action:
+        type: enum
+        required: true
+        values:
+          - respond    # Needs a reply from the user
+          - delegate   # Forward to someone else to handle
+          - defer      # Handle later (set deadline)
+          - archive    # No action needed, just file away
+          - review     # Read and assess, then decide
+        description: |
+          Required action for this email.
+
+          respond:
+            - Email requires a direct reply from the user
+            - May include response_draft for suggested text
+            - Completed when reply is sent
+
+          delegate:
+            - Email should be forwarded to someone else
+            - delegated_to field specifies the recipient
+            - User may add context before forwarding
+            - Completed when forwarded
+
+          defer:
+            - Email is important but not time-sensitive now
+            - deadline field specifies when to revisit
+            - Completed when deferred (will resurface later)
+
+          archive:
+            - Email requires no action
+            - FYI, newsletter, or informational
+            - Completed immediately upon categorization
+
+          review:
+            - Email needs to be read and assessed
+            - Action type may change after review
+            - Useful for complex emails needing analysis
+
+      deadline:
+        type: datetime
+        required: false
+        nullable: true
+        description: |
+          When response/action is needed by.
+          Can be explicit (mentioned in email) or implicit (based on urgency).
+          Used for:
+            - Overdue detection
+            - Priority sorting
+            - Defer target date
+        examples:
+          - "2024-11-28T17:00:00Z"  # Explicit deadline from email
+          - "2024-11-29T09:00:00Z"  # Defer until this date
+          - null  # No specific deadline
+
+      delegated_to:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          Who the email was/should be delegated to (if action=delegate).
+          Can be a name, email address, or role.
+        examples:
+          - "Sarah Johnson <sarah@company.com>"
+          - "Procurement Team"
+          - "Executive Assistant"
+          - null  # Not delegated
+
+      response_draft:
+        type: string
+        required: false
+        nullable: true
+        description: |
+          Draft response text (if action=respond).
+          Should match user's communication style from style_profile.
+          Used as starting point for user to review and send.
+        examples:
+          - "Hey John,\n\nThanks for sending this over. The agenda looks good..."
+          - "Hi Team,\n\nConfirmed for the meeting. See you then!\n\nBest,\n[Name]"
+          - null  # No draft yet
+
+      account:
+        type: string
+        required: false
+        description: |
+          Which email account this email is from (for multi-account users).
+          Maps to gmail tool account parameter.
+        examples:
+          - "default"
+          - "work"
+          - "personal"
+        default: "default"
+
+      category:
+        type: enum
+        required: false
+        values:
+          - vip           # From VIP sender/domain
+          - urgent        # Contains urgency keywords
+          - action        # Clear ask or deadline
+          - fyi           # Informational, no action needed
+          - low_priority  # Matches low priority patterns
+          - uncategorized # Not yet categorized
+        default: uncategorized
+        description: |
+          Auto-categorization result from @email-agent triage.
+          Used for filtering and batch processing.
+
+      snippet:
+        type: string
+        required: false
+        description: |
+          Brief preview of email content (first 200 chars).
+          Used for quick scanning without fetching full email.
+
+# =============================================================================
+# Priority Assignment Guide
+# =============================================================================
+
+priority_guide:
+  description: |
+    Guidelines for assigning priority based on email characteristics.
+
+  critical:
+    criteria:
+      - "Sender is in vip_senders or vip_domains list"
+      - "Explicit deadline is today or overdue"
+      - "Contains keywords: urgent, asap, emergency, critical"
+      - "User explicitly flagged as high priority"
+    response_time: "Within 2 hours"
+    examples:
+      - "CEO asking for immediate response"
+      - "Client with deadline today"
+      - "Time-sensitive contract review"
+
+  high:
+    criteria:
+      - "Important sender (manager, key client, partner)"
+      - "Deadline within this week"
+      - "Contains keywords: important, deadline, need by"
+      - "Part of active project or deal"
+    response_time: "Same day"
+    examples:
+      - "Manager requesting update"
+      - "Client meeting follow-up"
+      - "Vendor proposal review"
+
+  medium:
+    criteria:
+      - "Standard business communication"
+      - "No explicit urgency"
+      - "Sender not in VIP or low-priority lists"
+      - "Action required but flexible timing"
+    response_time: "Within 2-3 days"
+    examples:
+      - "Team coordination email"
+      - "Information request"
+      - "Meeting scheduling"
+
+  low:
+    criteria:
+      - "Newsletters and subscriptions"
+      - "CC'd (not direct recipient)"
+      - "Informational/FYI"
+      - "Matches low_priority_patterns in config"
+    response_time: "When time permits"
+    examples:
+      - "Weekly digest"
+      - "Industry newsletter"
+      - "Automated notifications"
+
+# =============================================================================
+# Action Type Details
+# =============================================================================
+
+action_details:
+
+  respond:
+    description: |
+      User needs to reply directly to this email.
+    workflow:
+      - step: 1
+        action: "Review email content and thread context"
+      - step: 2
+        action: "Generate response_draft matching user style"
+      - step: 3
+        action: "User reviews and edits draft"
+      - step: 4
+        action: "Send response via gmail tool"
+      - step: 5
+        action: "Mark status as completed"
+    completion_criteria:
+      - "Response sent successfully"
+      - "Sender acknowledged (for critical emails)"
+
+  delegate:
+    description: |
+      Email should be forwarded to someone else to handle.
+    workflow:
+      - step: 1
+        action: "Identify appropriate delegate (delegated_to)"
+      - step: 2
+        action: "User adds context if needed"
+      - step: 3
+        action: "Forward via gmail tool"
+      - step: 4
+        action: "Mark status as completed"
+    completion_criteria:
+      - "Email forwarded to delegate"
+      - "Context provided for delegate"
+
+  defer:
+    description: |
+      Email is important but not time-sensitive right now.
+    workflow:
+      - step: 1
+        action: "Set deadline for when to revisit"
+      - step: 2
+        action: "Optionally snooze in email client"
+      - step: 3
+        action: "Mark status as completed (deferred)"
+      - step: 4
+        action: "Email will resurface in future triage"
+    completion_criteria:
+      - "Deadline set"
+      - "Email snoozed or tagged for later"
+
+  archive:
+    description: |
+      Email requires no action - just filing.
+    workflow:
+      - step: 1
+        action: "Confirm no action needed"
+      - step: 2
+        action: "Archive in email client (if desired)"
+      - step: 3
+        action: "Mark status as completed"
+    completion_criteria:
+      - "Email acknowledged as FYI"
+      - "Optionally archived"
+
+  review:
+    description: |
+      Email needs assessment before determining action.
+    workflow:
+      - step: 1
+        action: "Read full email and thread"
+      - step: 2
+        action: "Determine appropriate action type"
+      - step: 3
+        action: "Update action field accordingly"
+      - step: 4
+        action: "Proceed with chosen action workflow"
+    completion_criteria:
+      - "Action type determined"
+      - "Follow-on action completed"
+
+# =============================================================================
+# Status Transitions for Email Tasks
+# =============================================================================
+
+status_transitions:
+  description: |
+    Valid status changes for email task work items.
+
+  valid:
+    - from: pending
+      to: [in_progress, completed, abandoned]
+      notes: |
+        Start handling, complete immediately (archive), or abandon (deleted/spam)
+
+    - from: in_progress
+      to: [completed, blocked, pending]
+      notes: |
+        Finish action, hit blocker, or pause to handle later
+
+    - from: blocked
+      to: [pending, in_progress, abandoned]
+      notes: |
+        Resume when unblocked, or abandon if no longer relevant
+
+    - from: completed
+      to: [pending]
+      notes: |
+        Reopen if follow-up needed (new reply in thread)
+
+    - from: abandoned
+      to: [pending]
+      notes: |
+        Reconsider if email becomes relevant again
+
+  completion_requirements:
+    respond:
+      - "Response sent via gmail tool"
+      - "response_draft cleared or marked as sent"
+    delegate:
+      - "Email forwarded"
+      - "delegated_to field populated"
+    defer:
+      - "deadline field set"
+      - "Reminder mechanism activated"
+    archive:
+      - "No additional requirements"
+    review:
+      - "Action type updated to final action"
+      - "Final action completed"
+
+# =============================================================================
+# Examples
+# =============================================================================
+
+examples:
+
+  # ---------------------------------------------------------------------------
+  # Example 1: Critical email requiring immediate response
+  # ---------------------------------------------------------------------------
+  critical_respond:
+    description: |
+      A critical priority email from a VIP sender requiring
+      an immediate response. Shows response_draft workflow.
+
+    item:
+      id: "email-001"
+      type: "email_task"
+      title: "Respond: Q4 budget approval from CFO"
+      description: |
+        CFO needs budget approval confirmation for Q4 spending by EOD.
+        This is blocking procurement for critical hires.
+      status: "in_progress"
+      priority: "critical"
+      dependencies: []
+      acceptance_criteria:
+        - "Response sent confirming approval"
+        - "CFO acknowledged receipt"
+      metadata:
+        email_id: "18d5a2f3b4c6e7f8"
+        thread_id: "18d5a2f3b4c6e7f8"
+        sender: "Sarah Chen <sarah.chen@company.com>"
+        subject: "URGENT: Q4 Budget Approval Needed Today"
+        received_at: "2024-11-27T09:15:00-08:00"
+        action: "respond"
+        deadline: "2024-11-27T17:00:00-08:00"
+        delegated_to: null
+        response_draft: |
+          Hi Sarah,
+
+          Approved! The Q4 budget looks good. Go ahead with the procurement.
+
+          Let me know if you need anything else.
+
+          Best,
+          [Name]
+        account: "work"
+        category: "vip"
+        snippet: "Hi, I need your approval on the Q4 budget before EOD..."
+
+  # ---------------------------------------------------------------------------
+  # Example 2: Email to delegate
+  # ---------------------------------------------------------------------------
+  delegate_example:
+    description: |
+      An email that should be delegated to another team member.
+      Shows the delegation workflow.
+
+    item:
+      id: "email-002"
+      type: "email_task"
+      title: "Delegate: Vendor invoice inquiry to finance"
+      description: |
+        Vendor asking about invoice payment status. Finance team
+        handles all AP inquiries.
+      status: "pending"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Email forwarded to Finance team"
+        - "Context provided about vendor relationship"
+      metadata:
+        email_id: "18d5b3e4c7d8f9a0"
+        thread_id: "18d5b3e4c7d8f9a0"
+        sender: "accounts@vendorco.com"
+        subject: "Invoice #12345 Payment Status"
+        received_at: "2024-11-26T14:30:00-08:00"
+        action: "delegate"
+        deadline: null
+        delegated_to: "Finance Team <finance@company.com>"
+        response_draft: null
+        account: "work"
+        category: "action"
+        snippet: "We are following up on invoice #12345 submitted on..."
+
+  # ---------------------------------------------------------------------------
+  # Example 3: Email to defer
+  # ---------------------------------------------------------------------------
+  defer_example:
+    description: |
+      An important email that's not time-sensitive right now.
+      Deferred to handle next week.
+
+    item:
+      id: "email-003"
+      type: "email_task"
+      title: "Defer: Conference speaker invitation to next week"
+      description: |
+        Invitation to speak at industry conference in March.
+        Need to check calendar and prepare bio. Deferring until
+        after Q4 planning sprint.
+      status: "completed"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Deadline set for next Monday"
+        - "Email snoozed in Gmail"
+      metadata:
+        email_id: "18d5c4f5d8e9f0b1"
+        thread_id: "18d5c4f5d8e9f0b1"
+        sender: "speakers@techconference.com"
+        subject: "Speaker Invitation: TechConf 2025"
+        received_at: "2024-11-25T10:00:00-08:00"
+        action: "defer"
+        deadline: "2024-12-02T09:00:00-08:00"
+        delegated_to: null
+        response_draft: null
+        account: "work"
+        category: "action"
+        snippet: "We would be honored to have you speak at TechConf 2025..."
+
+  # ---------------------------------------------------------------------------
+  # Example 4: Email to archive (FYI)
+  # ---------------------------------------------------------------------------
+  archive_example:
+    description: |
+      An informational email requiring no action. Newsletter
+      that can be archived immediately.
+
+    item:
+      id: "email-004"
+      type: "email_task"
+      title: "Archive: Weekly industry newsletter"
+      description: |
+        Regular industry newsletter. Skimmed headlines, nothing
+        requiring immediate attention.
+      status: "completed"
+      priority: "low"
+      dependencies: []
+      acceptance_criteria:
+        - "Email reviewed for relevance"
+        - "Archived"
+      metadata:
+        email_id: "18d5d5g6e9f0a2c3"
+        thread_id: "18d5d5g6e9f0a2c3"
+        sender: "digest@industrynews.com"
+        subject: "Weekly Tech Roundup - Nov 25, 2024"
+        received_at: "2024-11-25T06:00:00-08:00"
+        action: "archive"
+        deadline: null
+        delegated_to: null
+        response_draft: null
+        account: "personal"
+        category: "fyi"
+        snippet: "This week in tech: AI developments, funding news..."
+
+  # ---------------------------------------------------------------------------
+  # Example 5: Email needing review
+  # ---------------------------------------------------------------------------
+  review_example:
+    description: |
+      A complex email requiring careful review before
+      determining the appropriate action.
+
+    item:
+      id: "email-005"
+      type: "email_task"
+      title: "Review: Partnership proposal from StartupX"
+      description: |
+        Unsolicited partnership proposal. Need to review terms,
+        assess strategic fit, and decide whether to respond,
+        delegate to BD team, or archive.
+      status: "in_progress"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Proposal reviewed"
+        - "Strategic fit assessed"
+        - "Action type determined"
+      metadata:
+        email_id: "18d5e6h7f0a1b3d4"
+        thread_id: "18d5e6h7f0a1b3d4"
+        sender: "ceo@startupx.io"
+        subject: "Partnership Opportunity: StartupX + YourCompany"
+        received_at: "2024-11-26T11:30:00-08:00"
+        action: "review"
+        deadline: null
+        delegated_to: null
+        response_draft: null
+        account: "work"
+        category: "uncategorized"
+        snippet: "I'm reaching out because I believe there's a great..."
+
+# =============================================================================
+# Agent Integration
+# =============================================================================
+
+integrations:
+
+  email_agent:
+    description: |
+      The @email-agent is the primary agent for email triage and prioritization.
+      It acts as an EA (Executive Assistant) with opinions on what matters.
+
+    usage: |
+      Invoke for:
+        - Daily email triage and prioritization
+        - Drafting responses matching user style
+        - Categorizing emails by urgency and action
+        - Recommending batching and delegation
+        - Challenging priority misalignment
+
+    invocation: |
+      uv run python -m lib.invoke email-agent "
+        Perform email triage for today.
+
+        Focus on:
+        - Identify VIP and urgent emails
+        - Draft responses for critical items
+        - Recommend delegation where appropriate
+        - Challenge me on priority misalignment
+      "
+
+    output_format: |
+      Email agent produces:
+        - Triage report: projects/email/triage-YYYY-MM-DD.md
+        - Daily record updates via lib.email_priorities
+        - Response drafts for critical emails
+        - EA recommendations (batch, delegate, defer)
+
+    workflow_phases:
+      - phase: 1
+        name: "Load Context"
+        actions:
+          - "Load user priorities config"
+          - "Load today's daily record"
+          - "Load style profile"
+          - "Check all email accounts"
+
+      - phase: 2
+        name: "Fetch Emails"
+        actions:
+          - "Search is:unread in:inbox for all accounts"
+          - "Fetch full threads for important items"
+          - "Note total volume"
+
+      - phase: 3
+        name: "Auto-Categorize"
+        actions:
+          - "Match against VIP senders/domains"
+          - "Detect urgency keywords"
+          - "Identify action requirements"
+          - "Flag low-priority patterns"
+
+      - phase: 4
+        name: "Clarifying Questions"
+        actions:
+          - "Ask user about today's priorities"
+          - "Ask about expected senders"
+          - "Ask about urgent topics"
+          - "WAIT for response before continuing"
+
+      - phase: 5
+        name: "EA Prioritization"
+        actions:
+          - "Match emails to stated priorities"
+          - "Identify misalignments"
+          - "Suggest batching"
+          - "Recommend delegation"
+          - "Protect focus time"
+
+      - phase: 6
+        name: "Output"
+        actions:
+          - "Write triage report"
+          - "Update daily record"
+          - "Present recommendations"
+          - "Offer gentle challenges"
+
+  builder:
+    description: |
+      The @builder agent can create email task work items.
+
+    usage: |
+      Invoke to:
+        - Create email task entries in work_list.json
+        - Set up email triage infrastructure
+        - Build email-related automation
+
+  verifier:
+    description: |
+      The @verifier agent can check email task completion.
+
+    usage: |
+      Invoke to verify:
+        - Response was actually sent
+        - Delegation was completed
+        - All critical emails handled
+
+# =============================================================================
+# Workflow Integration
+# =============================================================================
+
+workflow:
+  description: |
+    How email task work items integrate with the pilot workflow.
+
+  creation:
+    - "@email-agent creates email tasks during triage"
+    - "Can be created manually for specific emails"
+    - "Each email needing action becomes a work item"
+
+  triage_cycle:
+    frequency: "Daily (recommended: morning)"
+    steps:
+      - step: 1
+        action: "Pilot invokes @email-agent"
+        command: "uv run python -m lib.invoke email-agent 'Daily email triage'"
+
+      - step: 2
+        action: "@email-agent performs triage phases 1-6"
+
+      - step: 3
+        action: "Critical emails become immediate work items"
+
+      - step: 4
+        action: "User handles email tasks through the day"
+
+      - step: 5
+        action: "End of day: mark completed, defer remaining"
+
+  integration_with_features:
+    notes: |
+      Email tasks can have dependencies on feature work:
+        - "Respond to client about feature X" depends on feature completion
+        - "Send release notes" depends on release work item
+
+      Email tasks can block feature work:
+        - "Get approval via email" before proceeding with feature
+
+# =============================================================================
+# Best Practices
+# =============================================================================
+
+best_practices:
+
+  triage:
+    - "Do triage at consistent time (morning recommended)"
+    - "Process all unread before starting responses"
+    - "Batch similar emails together"
+    - "Set clear priorities before diving in"
+    - "Be honest about today's capacity"
+
+  responding:
+    - "Use response_draft as starting point, not final"
+    - "Match your established communication style"
+    - "Confirm before sending critical emails"
+    - "Double-check recipients on replies"
+
+  delegating:
+    - "Provide context when forwarding"
+    - "Be clear about what you need from delegate"
+    - "Follow up if no response within expected time"
+
+  deferring:
+    - "Set realistic deadlines"
+    - "Don't use defer as a way to avoid decisions"
+    - "Review deferred items before they expire"
+
+  archiving:
+    - "Don't archive unread without at least skimming"
+    - "Archive aggressively for newsletters/notifications"
+    - "Trust that archived emails are searchable later"
+
+  priority_management:
+    - "Critical should be rare (1-2 per day max)"
+    - "Don't let urgency inflation creep in"
+    - "Re-evaluate priorities if too many critical items"
+    - "Protect focus time by batching low-priority"

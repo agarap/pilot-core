@@ -1,0 +1,581 @@
+#!/bin/bash
+# Pre-commit hook: Enforce git-reviewer approval
+#
+# This hook verifies:
+#   1. git-reviewer has approved the staged changes (REVIEW_APPROVED marker)
+#
+# REVIEW_APPROVED marker contains (JSON format):
+#   {
+#     "approved_at": "ISO timestamp (expires after 1 hour)",
+#     "diff_hash": "SHA-256 of staged diff (must match current)",
+#     "verdict": "APPROVED",
+#     "files": ["list", "of", "approved", "files"]
+#   }
+#
+# Bypasses (logged to logs/bypasses/):
+#   - PILOT_SKIP_REVIEW=1 git commit -m "emergency fix"
+#
+# Also:
+#   - Runs lib/validate for project structure checks
+#   - Regenerates DuckDB index and stages if changed
+
+set -e
+
+# Get the actual git directory (handles worktrees correctly)
+GIT_DIR=$(git rev-parse --git-dir)
+MARKER_FILE="$GIT_DIR/REVIEW_APPROVED"
+
+# Get repo root for logging
+REPO_ROOT=$(git rev-parse --show-toplevel)
+BYPASS_LOG_DIR="$REPO_ROOT/logs/bypasses"
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Helper functions
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+log_bypass() {
+    local reason="$1"
+    local timestamp=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    local date_part=$(date +"%Y-%m-%d")
+
+    # Create bypass log directory if needed
+    mkdir -p "$BYPASS_LOG_DIR"
+
+    # Get staged files for logging
+    local staged_files=$(git diff --cached --name-only | tr '\n' ', ' | sed 's/,$//')
+
+    # Log the bypass event
+    echo "---" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "timestamp: $timestamp" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "reason: $reason" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "user: $(git config user.name) <$(git config user.email)>" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "branch: $(git rev-parse --abbrev-ref HEAD)" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "files: $staged_files" >> "$BYPASS_LOG_DIR/$date_part.log"
+    echo "" >> "$BYPASS_LOG_DIR/$date_part.log"
+}
+
+get_staged_diff_hash() {
+    git diff --cached | shasum -a 256 | cut -d' ' -f1
+}
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for bypass via environment variable
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$PILOT_SKIP_REVIEW" = "1" ]; then
+    echo ""
+    echo "⚠️  BYPASSING git-reviewer check (PILOT_SKIP_REVIEW=1)"
+    echo ""
+    log_bypass "PILOT_SKIP_REVIEW environment variable"
+    # Record telemetry (non-blocking - failures should not break the commit)
+    uv run python -m lib.bypass_telemetry \
+        --reason "PILOT_SKIP_REVIEW environment variable" \
+        --user "$(git config user.name) <$(git config user.email)>" \
+        --branch "$(git rev-parse --abbrev-ref HEAD)" \
+        --files "$(git diff --cached --name-only | tr '\n' ',' | sed 's/,$//')" \
+        --hook "pre-commit" 2>/dev/null || true
+    # Continue to validation, don't exit yet
+else
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Check what's being committed - allow .gitignore without review
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+    STAGED_FILES=$(git diff --cached --name-only)
+    ONLY_GITIGNORE=true
+
+    for file in $STAGED_FILES; do
+        if [ "$file" != ".gitignore" ]; then
+            ONLY_GITIGNORE=false
+            break
+        fi
+    done
+
+    if [ "$ONLY_GITIGNORE" = false ]; then
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Check for approval marker
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        if [ ! -f "$MARKER_FILE" ]; then
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ COMMIT BLOCKED: No git-reviewer approval found"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "All commits require @git-reviewer approval."
+            echo ""
+            echo "To get approval:"
+            echo "  1. Stage changes:   git add -A"
+            echo "  2. Request review:  uv run python -m lib.invoke git-reviewer 'Review staged changes' -v"
+            echo "  3. If APPROVED:     uv run python -m lib.approve"
+            echo "  4. Commit:          git commit -m 'message'"
+            echo ""
+            echo "Emergency bypass (logged):"
+            echo "  PILOT_SKIP_REVIEW=1 git commit -m 'emergency: reason'"
+            echo ""
+            exit 1
+        fi
+
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Parse marker file (JSON format with YAML fallback)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        # Try JSON first, fall back to old YAML-like format
+        MARKER_CONTENT=$(cat "$MARKER_FILE")
+        PARSED=$(python3 -c "
+import json
+import sys
+
+content = '''$MARKER_CONTENT'''
+try:
+    data = json.loads(content)
+    print(data.get('approved_at', ''))
+    print(data.get('diff_hash', ''))
+except json.JSONDecodeError:
+    # Fall back to old YAML-like format
+    approved_at = ''
+    diff_hash = ''
+    for line in content.split('\n'):
+        if line.startswith('approved_at:'):
+            approved_at = line.split(':', 1)[1].strip()
+        elif line.startswith('diff_hash:'):
+            diff_hash = line.split(':', 1)[1].strip()
+    print(approved_at)
+    print(diff_hash)
+" 2>/dev/null || echo -e "\n")
+
+        APPROVED_AT=$(echo "$PARSED" | head -1)
+        APPROVED_HASH=$(echo "$PARSED" | tail -1)
+
+        if [ -z "$APPROVED_HASH" ]; then
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ COMMIT BLOCKED: Invalid approval marker (no diff_hash)"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "The approval marker is corrupted or invalid."
+            echo "Please run: uv run python -m lib.approve clear"
+            echo "Then request a new review."
+            echo ""
+            exit 1
+        fi
+
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Check expiration (1 hour = 3600 seconds)
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        if [ -n "$APPROVED_AT" ]; then
+            # Convert ISO timestamp to epoch seconds
+            # Handle both GNU date and BSD date (macOS)
+            if date --version >/dev/null 2>&1; then
+                # GNU date
+                APPROVED_EPOCH=$(date -d "$APPROVED_AT" +%s 2>/dev/null || echo "0")
+            else
+                # BSD date (macOS) - need to handle ISO format
+                # Convert ISO format to something BSD date understands
+                APPROVED_EPOCH=$(date -j -f "%Y-%m-%dT%H:%M:%S" "${APPROVED_AT%%.*}" +%s 2>/dev/null || echo "0")
+            fi
+
+            CURRENT_EPOCH=$(date +%s)
+            AGE=$((CURRENT_EPOCH - APPROVED_EPOCH))
+
+            if [ "$AGE" -gt 3600 ]; then
+                HOURS=$((AGE / 3600))
+                MINUTES=$(((AGE % 3600) / 60))
+                echo ""
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo "❌ COMMIT BLOCKED: Approval expired"
+                echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+                echo ""
+                echo "The approval was granted ${HOURS}h ${MINUTES}m ago (max 1 hour)."
+                echo "Approved at: $APPROVED_AT"
+                echo ""
+                echo "Please request a new review:"
+                echo "  uv run python -m lib.invoke git-reviewer 'Review staged changes' -v"
+                echo ""
+                rm -f "$MARKER_FILE"
+                exit 1
+            fi
+        fi
+
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        # Verify diff hash matches current staged changes
+        # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+        CURRENT_HASH=$(get_staged_diff_hash)
+
+        if [ "$APPROVED_HASH" != "$CURRENT_HASH" ]; then
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "❌ COMMIT BLOCKED: Staged changes modified after approval"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "The staged changes have been modified since approval."
+            echo ""
+            echo "Approved hash: ${APPROVED_HASH:0:16}..."
+            echo "Current hash:  ${CURRENT_HASH:0:16}..."
+            echo ""
+            echo "Please request a new review:"
+            echo "  uv run python -m lib.invoke git-reviewer 'Review staged changes' -v"
+            echo ""
+            rm -f "$MARKER_FILE"
+            exit 1
+        fi
+
+        echo "✓ Git-reviewer approval verified"
+        echo "  Approved at: $APPROVED_AT"
+    fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for project worktree mismatches
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+check_project_worktree() {
+    # Check if any staged files are in a project with worktree binding
+    # This is a WARNING, not a block
+    uv run python -c "
+import json
+import sys
+from pathlib import Path
+
+# Get current branch
+import subprocess
+result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                       capture_output=True, text=True)
+current_branch = result.stdout.strip() if result.returncode == 0 else ''
+
+# Get staged files from stdin
+staged_files = sys.stdin.read().strip().split('\n')
+staged_files = [f for f in staged_files if f]
+
+# Find projects being modified
+projects_modified = set()
+for f in staged_files:
+    if f.startswith('projects/'):
+        parts = f.split('/')
+        if len(parts) >= 2:
+            projects_modified.add(parts[1])
+
+if not projects_modified:
+    sys.exit(0)
+
+# Check each project for worktree binding
+warnings = []
+for project in projects_modified:
+    feature_list = Path(f'projects/{project}/feature_list.json')
+    if not feature_list.exists():
+        continue
+
+    try:
+        with open(feature_list) as f:
+            data = json.load(f)
+
+        worktree = data.get('worktree')
+        if worktree and worktree.get('branch'):
+            expected_branch = worktree.get('branch')
+            if current_branch != expected_branch:
+                warnings.append({
+                    'project': project,
+                    'expected': expected_branch,
+                    'current': current_branch,
+                    'path': worktree.get('path', '')
+                })
+    except (json.JSONDecodeError, IOError):
+        continue
+
+if warnings:
+    # Output warnings (will be captured and displayed)
+    for w in warnings:
+        print(f\"{w['project']}|{w['expected']}|{w['current']}|{w['path']}\")
+    sys.exit(1)
+
+sys.exit(0)
+"
+}
+
+# Get staged files that are in projects/
+PROJECT_STAGED=$(git diff --cached --name-only | grep '^projects/' || true)
+
+if [ -n "$PROJECT_STAGED" ]; then
+    WORKTREE_WARNINGS=$(echo "$PROJECT_STAGED" | check_project_worktree 2>/dev/null || true)
+
+    if [ -n "$WORKTREE_WARNINGS" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "⚠️  WARNING: Project files being committed from wrong branch"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "The following projects have worktree bindings but you're committing from a different branch:"
+        echo ""
+        echo "$WORKTREE_WARNINGS" | while IFS='|' read -r project expected current path; do
+            echo "  📁 $project"
+            echo "     └─ Expected branch: $expected"
+            echo "     └─ Current branch:  $current"
+            if [ -n "$path" ]; then
+                echo "     └─ Worktree path:   $path"
+            fi
+            echo ""
+        done
+        echo "This might cause merge conflicts or lost work."
+        echo ""
+        echo "Recommended: Switch to the project worktree and commit from there."
+        echo ""
+        echo "Proceeding anyway (this is a warning, not a block)..."
+        echo ""
+    fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Run validation
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+uv run python -m lib.validate
+VALIDATE_EXIT=$?
+
+if [ $VALIDATE_EXIT -ne 0 ]; then
+    exit $VALIDATE_EXIT
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for banned web library imports in staged Python files
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Get staged Python files only
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -n "$STAGED_PY" ]; then
+    # Run scanner on staged Python files
+    VIOLATIONS=$(uv run python -c "
+import sys
+import os
+from pathlib import Path
+
+# Add repo root to path
+sys.path.insert(0, '$REPO_ROOT')
+
+from tools.scan_web_imports import scan_file, is_exempted_file, EXEMPTED_FILES
+
+root = Path('$REPO_ROOT')
+violations = []
+
+# Files to scan (from staged list)
+staged_files = '''$STAGED_PY'''.strip().split('\n')
+
+for filepath in staged_files:
+    if not filepath:
+        continue
+
+    full_path = root / filepath
+
+    # Skip exempted files (the Parallel API tools themselves)
+    rel_path = filepath.replace(os.sep, '/')
+    if rel_path in EXEMPTED_FILES:
+        continue
+
+    # Skip if file doesn't exist (deleted file)
+    if not full_path.exists():
+        continue
+
+    # Scan the file
+    file_violations = scan_file(full_path, root)
+    violations.extend(file_violations)
+
+if violations:
+    for v in violations:
+        print(f\"{v['file']}:{v['line']}: {v['library']} - {v['import']}\")
+    sys.exit(1)
+" 2>&1)
+
+    SCAN_EXIT=$?
+
+    if [ $SCAN_EXIT -ne 0 ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "❌ COMMIT BLOCKED: Banned web library imports detected"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "The following files contain imports of banned web libraries:"
+        echo ""
+        echo "$VIOLATIONS" | while read -r line; do
+            echo "  $line"
+        done
+        echo ""
+        echo "ALL web access must go through Parallel API tools:"
+        echo "  - tools/web_search.py - For search queries"
+        echo "  - tools/web_fetch.py - For fetching specific URLs"
+        echo "  - tools/parallel_task.py - For complex research tasks"
+        echo ""
+        echo "See: docs/tools.md for usage details"
+        echo ""
+        echo "Remove the banned imports and use the Parallel API tools instead."
+        echo ""
+        exit 1
+    fi
+
+    echo "✓ Web import check passed (no banned imports)"
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Check for Task tool violations in recent agent logs (BLOCKS commit)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ -d "$REPO_ROOT/logs/agents" ]; then
+    # Scan logs from the last 24 hours for Task tool violations
+    TASK_VIOLATIONS=$(uv run python -c "
+import json
+import sys
+from datetime import datetime, timedelta
+from pathlib import Path
+
+sys.path.insert(0, '$REPO_ROOT')
+from tools.detect_task_tool import detect_task_tool
+
+result = detect_task_tool('$REPO_ROOT/logs/agents')
+
+# Filter to last 24 hours
+cutoff = datetime.now() - timedelta(hours=24)
+recent_violations = []
+
+for v in result.get('violations', []):
+    try:
+        ts = datetime.fromisoformat(v.get('timestamp', '').replace('Z', '+00:00'))
+        if ts.replace(tzinfo=None) > cutoff:
+            recent_violations.append(v)
+    except (ValueError, TypeError):
+        # Include violations with invalid timestamps (conservative)
+        recent_violations.append(v)
+
+if recent_violations:
+    for v in recent_violations[:5]:  # Show max 5
+        print(f\"{v['agent']}: {v['task_type']} - {v.get('context', '')[:80]}\")
+    if len(recent_violations) > 5:
+        print(f'... and {len(recent_violations) - 5} more')
+    sys.exit(1)
+" 2>&1)
+
+    TASK_EXIT=$?
+
+    if [ $TASK_EXIT -ne 0 ] && [ -n "$TASK_VIOLATIONS" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "❌ COMMIT BLOCKED: Task tool violations detected in recent logs"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "The following agents used Claude Code's banned Task tool:"
+        echo ""
+        echo "$TASK_VIOLATIONS" | while read -r line; do
+            echo "  $line"
+        done
+        echo ""
+        echo "Use 'uv run python -m lib.invoke <agent>' instead."
+        echo ""
+        echo "Delete the violating log files or fix the agent behavior before committing."
+        echo ""
+        exit 1
+    fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Enforce lib.finalize for feature-tracked projects
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+if [ "$PILOT_SKIP_FINALIZE_CHECK" != "1" ]; then
+    FINALIZE_CHECK=$(uv run python -c "
+import json
+import os
+import sys
+from pathlib import Path
+
+# Get staged files
+import subprocess
+result = subprocess.run(['git', 'diff', '--cached', '--name-only'],
+                       capture_output=True, text=True)
+staged_files = [f for f in result.stdout.strip().split('\n') if f]
+
+# Get current branch
+result = subprocess.run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'],
+                       capture_output=True, text=True)
+current_branch = result.stdout.strip() if result.returncode == 0 else ''
+
+# Find feature-tracked projects being modified
+projects_with_features = []
+for f in staged_files:
+    if f.startswith('projects/'):
+        parts = f.split('/')
+        if len(parts) >= 2:
+            project = parts[1]
+            feature_file = Path(f'projects/{project}/feature_list.json')
+            if feature_file.exists():
+                try:
+                    with open(feature_file) as ff:
+                        data = json.load(ff)
+                    # Has features array with items = feature-tracked project
+                    if data.get('features') and len(data['features']) > 0:
+                        projects_with_features.append(project)
+                except:
+                    pass
+
+# Dedupe
+projects_with_features = list(set(projects_with_features))
+
+if not projects_with_features:
+    sys.exit(0)
+
+# Check if FINALIZE_MARKER exists (set by lib.finalize)
+git_dir_result = subprocess.run(['git', 'rev-parse', '--git-dir'],
+                                capture_output=True, text=True)
+git_dir = git_dir_result.stdout.strip() if git_dir_result.returncode == 0 else '.git'
+finalize_marker = Path(git_dir) / 'FINALIZE_IN_PROGRESS'
+
+if finalize_marker.exists():
+    # lib.finalize is running this commit - allow it
+    sys.exit(0)
+
+# Block: feature-tracked project commit without lib.finalize
+for project in projects_with_features:
+    print(f'{project}')
+sys.exit(1)
+" 2>&1)
+
+    FINALIZE_EXIT=$?
+
+    if [ $FINALIZE_EXIT -ne 0 ] && [ -n "$FINALIZE_CHECK" ]; then
+        echo ""
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "❌ COMMIT BLOCKED: Use lib.finalize for feature-tracked projects"
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo ""
+        echo "The following feature-tracked projects are being modified:"
+        echo ""
+        echo "$FINALIZE_CHECK" | while read -r project; do
+            echo "  📁 $project"
+        done
+        echo ""
+        echo "Feature-tracked projects MUST use lib.finalize to commit:"
+        echo ""
+        echo "  uv run python -m lib.finalize <project> <feature-id> -m 'message'"
+        echo ""
+        echo "This ensures proper validation, feature tracking, and auto-sync."
+        echo ""
+        echo "Emergency bypass (logged):"
+        echo "  PILOT_SKIP_FINALIZE_CHECK=1 git commit -m 'emergency: reason'"
+        echo ""
+        exit 1
+    fi
+fi
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Index regeneration removed - index.json is now gitignored
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Index is regenerated locally as needed but not committed to avoid
+# merge conflicts. Each worktree maintains its own index.
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# Clean up marker after successful verification
+# (post-commit will also try to clean up, but do it here too)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+# Note: We don't delete marker here - post-commit hook handles cleanup
+# This allows re-running commit if validation fails
+
+exit 0

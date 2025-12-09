@@ -1,0 +1,1021 @@
+# Company Research Schema
+# Standalone schema for company/startup research work items in the pilot system.
+#
+# Company research items represent structured intelligence gathering about
+# companies and startups. This schema supports multi-dimensional research
+# with question-driven investigation and confidence-weighted findings.
+#
+# Usage:
+#   - Create company research items in work_list.json with type: "company_research"
+#   - Use @company-researcher for deep, multi-factorial intelligence
+#   - Use @web-researcher for specific research threads
+#   - Track findings with confidence and source citations
+#   - Output comprehensive research to projects/<company>/research/
+#
+# See also: system/schemas/work_item.yaml for the unified work item schema
+
+name: company_research
+version: "1.0"
+description: Schema for company/startup research work items with structured findings and source tracking
+
+# =============================================================================
+# Schema Definition
+# =============================================================================
+
+schema:
+
+  # ---------------------------------------------------------------------------
+  # Core Work Item Fields (inherited from work_item schema)
+  # ---------------------------------------------------------------------------
+
+  id:
+    type: string
+    required: true
+    description: |
+      Unique identifier within the work list.
+      Convention: 'co-NNN' for company research (e.g., 'co-001', 'co-042')
+    pattern: "^co-[0-9]{3}$"
+    examples:
+      - "co-001"
+      - "co-015"
+      - "co-100"
+
+  type:
+    type: string
+    required: true
+    const: "company_research"
+    description: |
+      Must be "company_research" for items following this schema.
+
+  title:
+    type: string
+    required: true
+    max_length: 80
+    description: |
+      Short, scannable title for the research item.
+      Convention: "[Purpose] Company Name"
+    examples:
+      - "Competitor Analysis: Acme Corp"
+      - "Investment Target: TechStartup Inc"
+      - "Partnership Evaluation: DataCo"
+      - "Acquisition Target: CloudWidgets"
+
+  description:
+    type: string
+    required: true
+    description: |
+      Context about the research purpose and scope.
+      Should include:
+      - Why this company is being researched
+      - What decisions will be informed by the findings
+      - Any specific areas of focus or concern
+      - Time constraints or urgency
+
+  status:
+    type: enum
+    required: true
+    values:
+      - pending       # Research identified but not started
+      - in_progress   # Actively gathering intelligence
+      - blocked       # Cannot proceed (access issues, awaiting input)
+      - completed     # Research finished, findings documented
+      - abandoned     # No longer relevant or feasible
+    default: pending
+    description: |
+      Current research state. Company research is "completed" when
+      all research questions have been addressed with findings.
+
+  priority:
+    type: enum
+    required: false
+    values:
+      - critical  # Time-sensitive decision pending (deal deadline, etc.)
+      - high      # Important strategic decision depends on this
+      - medium    # Standard research priority
+      - low       # Background intelligence, no immediate decision
+    default: medium
+    description: |
+      Research priority. Critical typically means a business decision
+      (investment, partnership, acquisition) has a near-term deadline.
+
+  dependencies:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      List of work item IDs that must be completed before this
+      research can proceed. May include prior research on related
+      companies or market analysis.
+    examples:
+      - ["co-001"]  # Depends on prior company research
+      - ["h-005", "co-002"]  # Depends on hypothesis and another company
+
+  acceptance_criteria:
+    type: array
+    items: string
+    required: false
+    default: []
+    description: |
+      Criteria for considering the research complete.
+      Should focus on coverage and quality, not specific findings.
+    examples:
+      - "All 12 research dimensions covered"
+      - "Key people identified with LinkedIn profiles"
+      - "Funding history verified from multiple sources"
+      - "Competitive positioning analysis completed"
+      - "Risk factors documented with evidence"
+
+  # ---------------------------------------------------------------------------
+  # Company Research Metadata
+  # ---------------------------------------------------------------------------
+
+  metadata:
+    type: object
+    required: true
+    description: |
+      Company research-specific fields for structured intelligence gathering.
+    fields:
+
+      company_name:
+        type: string
+        required: true
+        description: |
+          Official company name as it appears in legal/business contexts.
+          Use the full legal name, not abbreviations or trading names.
+        examples:
+          - "Anthropic PBC"
+          - "Stripe, Inc."
+          - "OpenAI, Inc."
+
+      domain:
+        type: string
+        required: true
+        description: |
+          Company's primary website domain (without protocol).
+          Used for research anchoring and verification.
+        pattern: "^[a-zA-Z0-9][a-zA-Z0-9-]*\\.[a-zA-Z]{2,}$"
+        examples:
+          - "anthropic.com"
+          - "stripe.com"
+          - "openai.com"
+
+      research_questions:
+        type: array
+        items: string
+        required: true
+        min_items: 1
+        description: |
+          Specific questions to answer about the company.
+          These drive the research focus and determine completeness.
+
+          Question categories:
+          - Strategic: Market position, competitive dynamics, trajectory
+          - Financial: Funding, revenue, burn rate, runway
+          - Product: Technology, differentiation, roadmap
+          - People: Leadership, culture, talent quality
+          - Risk: Challenges, threats, concerns
+
+          Questions should be:
+          - Specific enough to have definitive answers
+          - Relevant to the research purpose
+          - Prioritized (most important first)
+        examples:
+          - "What is their current funding and runway?"
+          - "Who are the key competitors and how do they differentiate?"
+          - "What is their technology stack and core IP?"
+          - "What is the leadership team's track record?"
+          - "What are the main risk factors for this investment?"
+
+      findings:
+        type: array
+        items:
+          type: object
+          fields:
+            question:
+              type: string
+              description: The research question being answered
+            answer:
+              type: string
+              description: |
+                The answer derived from research.
+                Should be specific and actionable, not vague.
+            confidence:
+              type: enum
+              values: [high, medium, low]
+              description: |
+                Confidence in the answer based on source quality.
+
+                high:
+                  - Multiple independent sources agree
+                  - Primary source documentation
+                  - Recent data (within 6 months)
+
+                medium:
+                  - Single authoritative source
+                  - Some corroboration but incomplete
+                  - Older data (6-18 months)
+
+                low:
+                  - Single non-authoritative source
+                  - Inference from indirect evidence
+                  - Old data (>18 months) or conflicting sources
+            sources:
+              type: array
+              items: string
+              description: |
+                URLs or references supporting this finding.
+                All findings MUST have at least one source.
+        required: false
+        default: []
+        description: |
+          Answers to research questions with confidence and sources.
+          Each question in research_questions should have a corresponding finding.
+
+      industry:
+        type: string
+        required: false
+        description: |
+          Primary industry or sector the company operates in.
+          Use standard industry classifications where possible.
+        examples:
+          - "AI/ML Infrastructure"
+          - "Fintech - Payments"
+          - "Enterprise SaaS - HR"
+          - "Healthcare Technology"
+          - "Cybersecurity"
+
+      funding_stage:
+        type: string
+        required: false
+        description: |
+          Current funding stage or status.
+          Helps contextualize company maturity and trajectory.
+        examples:
+          - "Pre-seed"
+          - "Seed"
+          - "Series A"
+          - "Series B"
+          - "Series C+"
+          - "Growth/Late Stage"
+          - "Pre-IPO"
+          - "Public"
+          - "Bootstrapped"
+          - "Acquired"
+
+      key_people:
+        type: array
+        items:
+          type: object
+          fields:
+            name:
+              type: string
+              description: Full name of the person
+            role:
+              type: string
+              description: Current role/title at the company
+            linkedin:
+              type: string
+              description: LinkedIn profile URL (optional but preferred)
+            notes:
+              type: string
+              description: |
+                Relevant background (prior companies, expertise, tenure).
+                Optional but valuable for key decision-makers.
+        required: false
+        default: []
+        description: |
+          Key executives, founders, and other important personnel.
+          Focus on decision-makers and domain experts.
+
+          Priority order for identification:
+          1. CEO/Founder(s)
+          2. CTO/Technical leadership
+          3. CFO (especially for investment research)
+          4. Key product/sales leaders
+          5. Board members and notable advisors
+
+      # ---------------------------------------------------------------------------
+      # Extended Fields (not in base work_item.yaml)
+      # ---------------------------------------------------------------------------
+
+      research_purpose:
+        type: enum
+        values:
+          - competitor_analysis
+          - investment_target
+          - partnership_evaluation
+          - acquisition_target
+          - market_research
+          - vendor_assessment
+          - general_intelligence
+        required: false
+        description: |
+          The primary purpose driving this research.
+          Helps focus the research dimensions appropriately.
+
+      headquarters:
+        type: string
+        required: false
+        description: |
+          Company headquarters location.
+          Format: "City, State/Country"
+        examples:
+          - "San Francisco, CA"
+          - "New York, NY"
+          - "London, UK"
+          - "Tel Aviv, Israel"
+
+      founded_year:
+        type: integer
+        required: false
+        description: |
+          Year the company was founded.
+
+      employee_count:
+        type: string
+        required: false
+        description: |
+          Approximate employee count or range.
+          Use ranges for estimates: "50-100", "500+", etc.
+        examples:
+          - "10-50"
+          - "50-100"
+          - "100-500"
+          - "500-1000"
+          - "1000+"
+
+      total_funding:
+        type: string
+        required: false
+        description: |
+          Total known funding raised.
+          Include currency symbol and source date.
+        examples:
+          - "$50M (as of Jan 2025)"
+          - "$150M Series C (Crunchbase)"
+          - "Undisclosed"
+          - "Bootstrapped"
+
+      last_funding_date:
+        type: string
+        required: false
+        description: |
+          Date of most recent funding round.
+          Format: YYYY-MM or YYYY-MM-DD
+        examples:
+          - "2024-06"
+          - "2023-11-15"
+
+      competitors:
+        type: array
+        items: string
+        required: false
+        default: []
+        description: |
+          Known competitors in the same space.
+          List by company name or domain.
+
+      risk_factors:
+        type: array
+        items: string
+        required: false
+        default: []
+        description: |
+          Identified risks or concerns about the company.
+          Each item should be a specific, actionable risk statement.
+        examples:
+          - "Single customer concentration (>40% revenue from one client)"
+          - "Key person dependency on founding CTO"
+          - "Regulatory uncertainty in target market"
+          - "Unclear path to profitability"
+
+      momentum_assessment:
+        type: enum
+        values:
+          - accelerating    # Growing faster, positive trajectory
+          - stable          # Steady state, consistent performance
+          - decelerating    # Slowing growth, concerning signals
+          - unknown         # Insufficient data to assess
+        required: false
+        description: |
+          Overall assessment of company momentum.
+          Based on hiring, funding, product releases, press coverage.
+
+# =============================================================================
+# Research Dimensions Guide
+# =============================================================================
+
+research_dimensions:
+  description: |
+    The @company-researcher agent uses 12 research dimensions for
+    comprehensive company intelligence. These dimensions ensure
+    thorough coverage beyond surface-level information.
+
+  dimensions:
+    - name: "1. Company Fundamentals"
+      covers:
+        - Founding story and motivation
+        - Key dates (founding, pivots, launches)
+        - Corporate structure changes
+        - Pivot history and reasoning
+
+    - name: "2. Product & Technology"
+      covers:
+        - Product architecture and design decisions
+        - Technical stack and trade-offs
+        - Technical content (blogs, docs, open source)
+        - Build vs buy decisions
+
+    - name: "3. People Analysis"
+      covers:
+        - Founder backgrounds and track records
+        - Executive team capabilities
+        - Key hires (reveals priorities)
+        - Board and advisor network
+
+    - name: "4. Job Postings Intelligence"
+      covers:
+        - Open roles (reveals strategy)
+        - Hiring velocity and patterns
+        - Skills emphasized
+        - Team structure signals
+
+    - name: "5. Customer Intelligence"
+      covers:
+        - Case studies and outcomes
+        - Customer logos and segments
+        - Use cases and success patterns
+        - Customer testimonials
+
+    - name: "6. Content & Thought Leadership"
+      covers:
+        - Blog history and evolution
+        - Documentation quality
+        - Vision statements
+        - Conference presentations
+
+    - name: "7. Executive Voice Over Time"
+      covers:
+        - Interview archive
+        - Podcast appearances
+        - Strategy statements
+        - Reactions to market events
+
+    - name: "8. Employee Dynamics"
+      covers:
+        - Alumni network and destinations
+        - Turnover patterns
+        - Glassdoor/Blind sentiment
+        - Tenure data
+
+    - name: "9. Culture Analysis"
+      covers:
+        - Stated vs demonstrated values
+        - Work style (remote, hybrid, office)
+        - Hiring philosophy
+        - Cultural signals
+
+    - name: "10. External Perception"
+      covers:
+        - Press coverage tone and topics
+        - Analyst assessments
+        - Competitor commentary
+        - Community sentiment
+
+    - name: "11. Momentum Indicators"
+      covers:
+        - Recent funding activity
+        - Product launch cadence
+        - Partnership announcements
+        - Market share trends
+
+    - name: "12. Competitive Dynamics"
+      covers:
+        - Positioning and differentiation
+        - Competitive responses
+        - Market trend alignment
+        - Strategic gaps
+
+# =============================================================================
+# Status Transitions
+# =============================================================================
+
+status_transitions:
+  description: |
+    Valid status changes for company research work items.
+
+  valid:
+    - from: pending
+      to: [in_progress, blocked, abandoned]
+      notes: Start research, mark blocked, or abandon
+
+    - from: in_progress
+      to: [completed, blocked, pending]
+      notes: |
+        Finish research (completed), hit blocker, or pause (pending).
+        Do NOT mark completed without addressing all research_questions.
+
+    - from: blocked
+      to: [pending, in_progress, abandoned]
+      notes: Resume when unblocked or abandon if infeasible
+
+    - from: completed
+      to: [pending]
+      notes: |
+        Reopen only if significant new information emerges or
+        additional research questions are added.
+
+    - from: abandoned
+      to: [pending]
+      notes: Reconsider if circumstances change
+
+  completion_requirements:
+    - "All research_questions have corresponding findings"
+    - "Each finding has at least one source"
+    - "Key people identified for leadership positions"
+    - "Risk factors documented"
+    - "Research output files created in projects/<company>/research/"
+
+# =============================================================================
+# Examples
+# =============================================================================
+
+examples:
+
+  # ---------------------------------------------------------------------------
+  # Example 1: Competitor Analysis
+  # ---------------------------------------------------------------------------
+  competitor_analysis:
+    description: |
+      Competitor analysis for strategic planning. Focus on positioning,
+      strengths, weaknesses, and competitive dynamics.
+
+    item:
+      id: "co-001"
+      type: "company_research"
+      title: "Competitor Analysis: RivalTech Inc"
+      description: |
+        Deep analysis of RivalTech Inc as our primary competitor in the
+        enterprise AI space. Research will inform Q2 product strategy
+        and sales positioning.
+
+        Focus areas:
+        - Product capabilities vs our offering
+        - Pricing and go-to-market strategy
+        - Recent momentum and trajectory
+        - Customer wins and losses
+      status: "pending"
+      priority: "high"
+      dependencies: []
+      acceptance_criteria:
+        - "Product feature comparison completed"
+        - "Pricing intelligence gathered"
+        - "Recent customer wins identified"
+        - "Competitive strengths and weaknesses documented"
+        - "Strategic recommendations provided"
+      metadata:
+        company_name: "RivalTech Inc"
+        domain: "rivaltech.io"
+        research_purpose: "competitor_analysis"
+        industry: "Enterprise AI"
+        funding_stage: "Series C+"
+        research_questions:
+          - "What are RivalTech's core product capabilities?"
+          - "How does their pricing compare to ours?"
+          - "Who are their target customers and key wins?"
+          - "What is their go-to-market strategy?"
+          - "What are their key strengths vs us?"
+          - "What are their weaknesses we can exploit?"
+          - "What is their product roadmap direction?"
+          - "How are they perceived in the market?"
+        findings: []
+        key_people: []
+        competitors:
+          - "us"
+          - "OtherAI Corp"
+          - "DataMinds"
+
+  # ---------------------------------------------------------------------------
+  # Example 2: Investment Target Research
+  # ---------------------------------------------------------------------------
+  investment_target:
+    description: |
+      Due diligence research for potential investment. Focus on team,
+      traction, market, and risks.
+
+    item:
+      id: "co-002"
+      type: "company_research"
+      title: "Investment Target: CloudWidgets Series A"
+      description: |
+        Due diligence on CloudWidgets for potential Series A participation.
+        They're raising $15M at $60M pre-money. Decision deadline: Feb 15.
+
+        Key concerns from initial pitch:
+        - Founder experience seems light
+        - Customer concentration risk
+        - Competitive market
+      status: "in_progress"
+      priority: "critical"
+      dependencies: []
+      acceptance_criteria:
+        - "Founder backgrounds thoroughly vetted"
+        - "Customer references verified"
+        - "Competitive landscape mapped"
+        - "Financial metrics validated"
+        - "Risk factors documented with mitigations"
+        - "Investment recommendation provided"
+      metadata:
+        company_name: "CloudWidgets, Inc."
+        domain: "cloudwidgets.com"
+        research_purpose: "investment_target"
+        industry: "Cloud Infrastructure"
+        funding_stage: "Seed (raising Series A)"
+        headquarters: "Austin, TX"
+        founded_year: 2022
+        employee_count: "15-25"
+        total_funding: "$3M Seed (2022)"
+        last_funding_date: "2022-08"
+        research_questions:
+          - "What is the founders' background and track record?"
+          - "Is the $2M ARR claim verifiable?"
+          - "What is the customer concentration risk?"
+          - "How defensible is the technology?"
+          - "Who are the main competitors and how differentiated?"
+          - "What is the path to Series B metrics?"
+          - "What are the key risks to this investment?"
+          - "Is the $60M valuation justified?"
+        findings:
+          - question: "What is the founders' background and track record?"
+            answer: |
+              CEO Jane Smith: Former PM at AWS (3 years), Stanford CS.
+              CTO Bob Jones: Ex-Google SRE (5 years), MIT PhD.
+              Neither has founder experience but strong technical backgrounds.
+            confidence: high
+            sources:
+              - "https://linkedin.com/in/janesmith"
+              - "https://linkedin.com/in/bobjones"
+              - "https://cloudwidgets.com/about"
+          - question: "Is the $2M ARR claim verifiable?"
+            answer: |
+              Partially verified. Referenced 3 customers confirmed via case studies.
+              Monthly growth rate of 15% claimed but not independently verified.
+              Would need data room access for full validation.
+            confidence: medium
+            sources:
+              - "https://cloudwidgets.com/customers"
+              - "Pitch deck (received via email)"
+        key_people:
+          - name: "Jane Smith"
+            role: "CEO & Co-founder"
+            linkedin: "https://linkedin.com/in/janesmith"
+            notes: "Ex-AWS PM, Stanford CS. First-time founder."
+          - name: "Bob Jones"
+            role: "CTO & Co-founder"
+            linkedin: "https://linkedin.com/in/bobjones"
+            notes: "Ex-Google SRE, MIT PhD. Built their core platform."
+          - name: "Sarah Chen"
+            role: "VP Sales"
+            linkedin: "https://linkedin.com/in/sarahchen"
+            notes: "Joined 2023 from Datadog. Strong enterprise sales background."
+        competitors:
+          - "BigCloud Corp"
+          - "WidgetWorks"
+          - "CloudStuff Inc"
+        risk_factors:
+          - "First-time founders with no prior exit"
+          - "Top customer is 35% of revenue (concentration risk)"
+          - "Competitive market with well-funded players"
+          - "18 months runway post-raise at current burn"
+        momentum_assessment: "accelerating"
+
+  # ---------------------------------------------------------------------------
+  # Example 3: Partnership Evaluation
+  # ---------------------------------------------------------------------------
+  partnership_evaluation:
+    description: |
+      Evaluating potential strategic partner. Focus on alignment,
+      capabilities, and partnership risks.
+
+    item:
+      id: "co-003"
+      type: "company_research"
+      title: "Partnership Evaluation: DataPipe Systems"
+      description: |
+        Evaluating DataPipe Systems as potential data integration partner.
+        They've proposed a co-sell arrangement. Need to assess their
+        capabilities, reputation, and partnership suitability.
+      status: "completed"
+      priority: "medium"
+      dependencies: []
+      acceptance_criteria:
+        - "Technical capabilities assessed"
+        - "Customer overlap analyzed"
+        - "Reputation and reliability verified"
+        - "Partnership recommendation provided"
+      metadata:
+        company_name: "DataPipe Systems, LLC"
+        domain: "datapipe.io"
+        research_purpose: "partnership_evaluation"
+        industry: "Data Integration"
+        funding_stage: "Series B"
+        headquarters: "Denver, CO"
+        founded_year: 2019
+        employee_count: "100-200"
+        total_funding: "$45M (as of 2024)"
+        research_questions:
+          - "What are DataPipe's core technical capabilities?"
+          - "Do they have customers that overlap with our target market?"
+          - "What is their reputation for reliability and support?"
+          - "Are there any red flags or concerns?"
+          - "Would this partnership be strategically valuable?"
+        findings:
+          - question: "What are DataPipe's core technical capabilities?"
+            answer: |
+              Strong in real-time data streaming and ETL. Their core product
+              handles high-volume data pipelines (1M+ events/sec claimed).
+              Good connector ecosystem (150+ integrations). API-first design
+              aligns well with our architecture.
+            confidence: high
+            sources:
+              - "https://datapipe.io/docs"
+              - "https://datapipe.io/blog/architecture"
+              - "G2 reviews (avg 4.5/5)"
+          - question: "Do they have customers that overlap with our target market?"
+            answer: |
+              Yes, significant overlap. They serve mid-market and enterprise
+              in fintech, healthcare, and SaaS - all our target verticals.
+              12 of their public case studies are in our target segments.
+            confidence: high
+            sources:
+              - "https://datapipe.io/customers"
+              - "https://datapipe.io/case-studies"
+          - question: "What is their reputation for reliability and support?"
+            answer: |
+              Generally positive. G2 scores high on support (4.6/5).
+              Some complaints about documentation gaps in advanced features.
+              99.9% uptime SLA, status page shows good historical performance.
+            confidence: medium
+            sources:
+              - "https://g2.com/products/datapipe/reviews"
+              - "https://status.datapipe.io"
+              - "Reddit r/dataengineering mentions"
+          - question: "Are there any red flags or concerns?"
+            answer: |
+              One concern: They had layoffs in 2023 (reduced 20% of staff).
+              However, this appears to be market correction rather than
+              fundamental issues - they've resumed hiring in 2024.
+              Glassdoor ratings dropped post-layoff but recovering.
+            confidence: medium
+            sources:
+              - "TechCrunch layoff coverage"
+              - "LinkedIn headcount data"
+              - "Glassdoor reviews (3.8/5)"
+          - question: "Would this partnership be strategically valuable?"
+            answer: |
+              Recommendation: PROCEED with partnership.
+              Strategic value is high due to:
+              1. Complementary capabilities (they do data pipes, we do analytics)
+              2. Strong customer overlap in target verticals
+              3. Technical alignment (API-first, modern stack)
+              4. Their sales team is strong in regions we're weak
+
+              Suggested terms: Start with co-marketing and technical integration.
+              Evaluate co-sell after 6 months of technical partnership.
+            confidence: high
+            sources:
+              - "Analysis synthesis"
+        key_people:
+          - name: "Michael Rodriguez"
+            role: "CEO"
+            linkedin: "https://linkedin.com/in/mrodriguez"
+            notes: "Second-time founder. Previous company acquired by Informatica."
+          - name: "Lisa Park"
+            role: "VP Partnerships"
+            linkedin: "https://linkedin.com/in/lisapark"
+            notes: "Our primary contact. Ex-Snowflake partnerships."
+        competitors:
+          - "Fivetran"
+          - "Airbyte"
+          - "Stitch Data"
+        risk_factors:
+          - "Recent layoffs may indicate financial pressure"
+          - "Partnership could create competitor dependency"
+        momentum_assessment: "stable"
+
+  # ---------------------------------------------------------------------------
+  # Example 4: Minimal Research Item
+  # ---------------------------------------------------------------------------
+  minimal_item:
+    description: |
+      Minimal valid company research item showing only required fields.
+
+    item:
+      id: "co-004"
+      type: "company_research"
+      title: "General Intelligence: NewStartup"
+      description: "Background research on NewStartup, mentioned by board member."
+      status: "pending"
+      priority: "low"
+      metadata:
+        company_name: "NewStartup Inc"
+        domain: "newstartup.com"
+        research_questions:
+          - "What does NewStartup do?"
+          - "Who founded it and when?"
+          - "What stage are they at?"
+
+# =============================================================================
+# Agent Integration
+# =============================================================================
+
+integrations:
+
+  company_researcher:
+    description: |
+      The @company-researcher agent performs deep, multi-factorial company
+      intelligence. It is the PRIMARY agent for company research tasks.
+
+    usage: |
+      Invoke for:
+        - Comprehensive company analysis (all 12 dimensions)
+        - Competitor deep-dives
+        - Investment due diligence
+        - Partnership evaluations
+        - Acquisition target analysis
+
+      NOT for:
+        - Quick fact lookups (use @web-researcher)
+        - Single-question research (use @web-researcher)
+
+    invocation: |
+      uv run python -m lib.invoke company-researcher "
+        Research company: [Company Name]
+        Domain: [domain.com]
+
+        Research purpose: [competitor_analysis | investment_target | etc.]
+
+        Research questions:
+        1. [Question 1]
+        2. [Question 2]
+        ...
+
+        Additional context:
+        [Any specific concerns or focus areas]
+      "
+
+    output_format: |
+      Company researcher creates comprehensive output in:
+        projects/<company>/research/
+          company-profile.md      # Executive summary
+          dimensions/             # 12 dimension analysis files
+          synthesis.md            # Cross-dimensional insights
+          hypotheses.md           # Generated hypotheses
+          open-questions.md       # Known unknowns
+          timeline.md             # Key events chronology
+          provenance.md           # Source citations
+
+  web_researcher:
+    description: |
+      The @web-researcher agent handles specific research threads that
+      are part of larger company research efforts.
+
+    usage: |
+      Invoke for:
+        - Specific fact verification
+        - Single-dimension deep-dive
+        - Following up on leads from company-researcher
+        - Quick lookups within a research context
+
+    invocation: |
+      uv run python -m lib.invoke web-researcher "
+        Research thread for company research co-001:
+
+        Company: [Company Name]
+        Specific question: [What to research]
+
+        Context: [Why this matters for the overall research]
+      "
+
+    output_format: |
+      Web researcher returns:
+        - findings: Structured answer to the question
+        - confidence: high/medium/low
+        - sources: URLs and references
+        - follow_up_questions: Suggested next steps (if any)
+
+  verifier:
+    description: |
+      The @verifier agent can check company research completion criteria.
+
+    usage: |
+      Invoke to verify company research is ready for completion:
+        - All research questions addressed
+        - Findings properly sourced
+        - Key people identified
+        - Risk factors documented
+
+    invocation: |
+      uv run python -m lib.invoke verifier "
+        Verify company research co-001 is ready for completion.
+
+        Check:
+        - All research_questions have findings
+        - Each finding has sources
+        - Key people identified for leadership
+        - Risk factors documented
+        - Output files exist in projects/<company>/research/
+      "
+
+# =============================================================================
+# Workflow Integration
+# =============================================================================
+
+workflow:
+  description: |
+    How company research work items integrate with the pilot workflow.
+
+  creation:
+    - "Company research created by Pilot when business intelligence needed"
+    - "Must specify company_name, domain, and research_questions"
+    - "Set research_purpose to guide dimension prioritization"
+
+  research_process:
+    steps:
+      - step: 1
+        action: "Pilot creates company research work item with questions"
+        creates: ["work item in work_list.json"]
+
+      - step: 2
+        action: "Pilot delegates to @company-researcher"
+        agents: ["@company-researcher"]
+
+      - step: 3
+        action: "Company researcher executes 12-dimension analysis"
+        uses:
+          - "parallel_task for deep research"
+          - "parallel_findall for people discovery"
+          - "@web-researcher for specific threads"
+
+      - step: 4
+        action: "Populate findings with confidence and sources"
+        updates: ["findings", "key_people", "risk_factors", "momentum_assessment"]
+
+      - step: 5
+        action: "Create research output files"
+        creates: ["projects/<company>/research/ directory and files"]
+
+      - step: 6
+        action: "Update work item status to completed"
+        updates: ["status -> completed"]
+
+      - step: 7
+        action: "Report findings to Pilot for decision-making"
+
+  tracking:
+    - "Use work_tracker with type: company_research"
+    - "Company research can be dependencies for business decisions"
+    - "Multiple company research items can form a market analysis project"
+
+# =============================================================================
+# Best Practices
+# =============================================================================
+
+best_practices:
+
+  formulating_questions:
+    - "Make questions specific and answerable"
+    - "Prioritize questions by decision impact"
+    - "Include both factual and analytical questions"
+    - "Consider what would change your decision"
+
+  confidence_assessment:
+    - "High confidence requires multiple corroborating sources"
+    - "Be honest about medium/low confidence - it's valuable information"
+    - "Note when sources are old or potentially outdated"
+    - "Distinguish between verified facts and reasonable inferences"
+
+  source_documentation:
+    - "Every finding MUST have at least one source"
+    - "Prefer primary sources (company site, SEC filings, official announcements)"
+    - "Note source freshness (date accessed, date published)"
+    - "Flag sources that may be biased (competitor commentary, etc.)"
+
+  key_people_identification:
+    - "Always identify CEO and founder(s)"
+    - "Find CTO/technical leadership for tech companies"
+    - "CFO is critical for investment research"
+    - "Note tenure and background for context"
+
+  risk_documentation:
+    - "Be specific about risks, not vague"
+    - "Include evidence or reasoning for each risk"
+    - "Distinguish high-probability from high-impact risks"
+    - "Note any mitigating factors"
+
+  output_quality:
+    - "Executive summary should be actionable in 5 minutes"
+    - "Findings should directly inform stated decision"
+    - "Don't bury important insights - highlight them"
+    - "Acknowledge what you couldn't determine"

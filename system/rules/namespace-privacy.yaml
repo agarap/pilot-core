@@ -1,0 +1,149 @@
+name: namespace-privacy
+description: Privacy boundaries between personal and work project namespaces
+priority: 100
+when:
+  - agent: pilot
+  - agent: builder
+  - agent: web-researcher
+  - agent: academic-researcher
+
+rule: |
+  Privacy is critical. Project namespaces have strict boundaries.
+
+  ## Namespace Categories
+
+  **PERSONAL** - Everything except Parallel.ai work:
+  - Health research (conditions, treatments, medications, symptoms)
+  - Medical information (doctors, appointments, test results)
+  - Family matters (personal relationships, dependents)
+  - Family members' professional work (sister-in-law's dental practice, wife's work projects)
+  - Personal finances (investments, taxes, estate planning)
+  - Private interests not related to Parallel.ai
+  - ANY professional research not for Parallel.ai
+
+  **WORK** - ONLY Parallel.ai matters:
+  - Parallel.ai projects (GTM, product, engineering)
+  - Parallel.ai market analysis and competitors
+  - Parallel.ai business operations (recruiting, devrel, partnerships)
+  - Technical work for Parallel.ai (tools, agents, infrastructure)
+
+  ## Privacy Boundaries
+
+  - Personal namespaces CANNOT leak into work contexts
+  - Work namespaces CAN be accessed from personal contexts (one-way)
+  - Health data is STRICTLY personal (never reference in work)
+  - Personal identifiers never appear in work commits
+
+  Information flow:
+  ```
+  PERSONAL ←── WORK (work can inform personal decisions)
+  PERSONAL ──✗ WORK (personal never leaks to work)
+  ```
+
+  ## Inference Guidance for Pilot
+
+  Route to **PERSONAL** namespace if task mentions:
+  - health, medical, treatment, symptoms, medication, diagnosis
+  - doctor, hospital, therapy, wellness, fitness
+  - family, children, spouse, parents, sister-in-law, personal relationships
+  - personal finance, taxes, estate, inheritance
+  - private, confidential, personal
+  - wife's work, sister-in-law's practice, family member's professional needs
+  - ANY research not explicitly for Parallel.ai
+
+  Route to **WORK** namespace ONLY if task mentions:
+  - parallel, parallel.ai, GTM for Parallel
+  - Parallel recruiting, Parallel devrel
+  - Parallel competitors, Parallel market analysis
+  - Parallel.ai infrastructure, agent system for Parallel
+
+  **IMPORTANT RULE**: If not explicitly for Parallel.ai → use PERSONAL namespace
+
+  **When ambiguous**: ASK "Is this research/work for Parallel.ai specifically?"
+  Example: "Is this competitive analysis for Parallel.ai or another purpose?"
+
+  ## Project Naming Conventions
+
+  **Directory Structure**:
+  ```
+  projects/
+  ├── work/                                    # WORK namespace (ONLY Parallel.ai)
+  │   ├── parallel/                            # Parallel.ai company work
+  │   │   ├── gtm/                             # Go-to-market strategy
+  │   │   ├── competitors/                     # Competitive analysis
+  │   │   └── recruitment/                     # Hiring/DevRel
+  │   ├── research/                            # Parallel.ai research
+  │   │   ├── ai-native-search/
+  │   │   └── agent-frameworks/
+  │   └── infrastructure/                      # Pilot system work
+  │
+  └── personal/                                # PERSONAL namespace (everything else)
+      ├── my-health/                          # Your personal health
+      │   ├── cardiovascular-and-cholesterol/ # Heart health, cholesterol management
+      │   ├── longevity-and-supplements/      # Longevity protocols, supplements
+      │   ├── digestive-and-gi/               # GERD, digestive issues
+      │   │   └── gerd-management/
+      │   └── cognitive-and-brain/            # Brain health, cognitive optimization
+      │
+      ├── wife-health/                        # Wife's personal health
+      │   └── screening-and-prevention/       # Health screening, prevention plans
+      │
+      ├── friends-and-family/                 # Family/friends matters
+      │   └── professional-research/          # Professional work for family/friends
+      │       ├── sister-in-law-dental-practice/
+      │       │   └── implant-esthetics-comprehensive-review/
+      │       └── wife-medical-work/
+      │           └── pcsk9-inhibitor-repatha-analysis/
+      │
+      └── finance/                            # Personal finances
+  ```
+
+  **Naming rules**:
+  - Use `work/` prefix for ALL work projects
+  - Use `personal/` prefix for ALL personal projects
+  - Use lowercase, hyphenated names (e.g., `ai-native-search`)
+  - Group related topics in subdirectories
+  - Never create top-level project directories outside work/ or personal/
+  - ONE folder per project (see project-management.yaml for structure)
+
+  ## Cross-Contamination Prevention
+
+  NEVER:
+  - Reference personal project content in work outputs
+  - Include personal identifiers in work commits
+  - Mix health data with professional research
+  - Store personal data in work project directories
+  - Let work agents read personal project files
+
+  ALLOWED:
+  - Work research informing personal decisions
+  - Generic learnings (not personal data) flowing between contexts
+  - Referencing public information in either context
+
+  ## Examples
+
+  | Task | Directory | Reason |
+  |------|-----------|--------|
+  | "Research PCSK9 for wife's work" | personal/friends-and-family/professional-research/wife-medical-work/ | Family work = personal |
+  | "Research Parallel.ai competitor SEO" | work/parallel/competitors/ | Explicitly for Parallel.ai |
+  | "Find best doctors in SF" | personal/my-health/ | Personal health |
+  | "Find DevRel candidates for Parallel" | work/parallel/recruitment/ | Parallel.ai recruiting |
+  | "Analyze my cholesterol treatment" | personal/my-health/cardiovascular-and-cholesterol/ | Personal health |
+  | "Analyze Parallel's market positioning" | work/parallel/gtm/ | Parallel.ai strategy |
+  | "Research schools for kids" | personal/friends-and-family/ | Family matters |
+  | "Research developer communities for wife" | personal/friends-and-family/professional-research/wife-medical-work/ | Family work |
+  | "Dental implants for sister-in-law" | personal/friends-and-family/professional-research/sister-in-law-dental-practice/ | Family work |
+  | "Build AI-native search for Parallel" | work/research/ai-native-search/ | Parallel.ai project |
+
+  ## Enforcement
+
+  Before creating any file or project:
+  1. Identify namespace from task keywords
+  2. Verify target directory matches namespace
+  3. If ambiguous, ask human
+  4. Never cross-contaminate
+
+  Git-reviewer should flag:
+  - Personal content in work commits
+  - Work commits touching personal directories
+  - Mixed namespace references in single files

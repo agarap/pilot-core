@@ -1,0 +1,99 @@
+name: parallel-research-execution
+description: Enforce parallel execution of independent research tasks using Parallel APIs and multiple agents
+priority: 95
+when:
+  - agent: pilot
+  - agent: web-researcher
+  - agent: academic-researcher
+  - agent: company-researcher
+  - project_type: research
+  - project_type: investigation
+rule: |
+  ## Parallel Research Execution
+
+  When a research project has multiple independent questions/tasks, execute them
+  in parallel for maximum throughput.
+
+  ### 1. Parallel Execution Principle
+
+  - Items with parallel_safe=true AND no unmet dependencies CAN run concurrently
+  - Use project_tracker parallel_batch to get executable items
+  - Launch up to max_concurrent agents simultaneously
+
+  ### 2. How to Execute in Parallel
+
+  ```bash
+  # Get all parallel-safe items
+  uv run python -m tools project_tracker '{"action": "parallel_batch", "project": "<project>"}'
+
+  # For each item, launch agent in parallel (Pilot uses Task tool with multiple invocations)
+  # Or use parallel_task for web research:
+  uv run python -m tools parallel_task '{"objective": "<question>", "output_path": "projects/<project>/_working/agent-outputs/<item-id>.md"}'
+  ```
+
+  ### 3. Parallel Safety Rules
+
+  Mark items as parallel_safe=true when:
+  - Independent fact-finding questions
+  - Separate entity research (different companies, people)
+  - Non-overlapping topic areas
+  - No synthesis/aggregation required yet
+
+  Mark items as parallel_safe=false when:
+  - Depends on other items' findings
+  - Synthesis/aggregation task
+  - Sequential decision-making
+  - One question's answer affects another's scope
+
+  ### 4. Output Isolation
+
+  Each parallel agent writes to its own output file:
+  - projects/<project>/_working/agent-outputs/<item-id>-<agent>-<timestamp>.md
+  - Never overwrite another agent's output
+  - Synthesis phase reads all outputs
+
+  ### 5. Synthesis Phase
+
+  After parallel items complete:
+  - Pilot (or designated synthesizer) reads all outputs
+  - Creates unified findings document
+  - Moves synthesis items to in_progress
+  - Cannot start synthesis until ALL dependencies completed
+
+  ### 6. Web Research Parallelization
+
+  For web research specifically:
+  - Use parallel_task with different objectives
+  - Each task can use any processor tier
+  - Results stored in data/parallel_task/
+  - Reference results by task ID in project tracking
+
+  ### 7. Enforcement
+
+  - project_tracker enforces: cannot mark item complete if dependencies not met
+  - project_tracker tracks: parallel execution history per item
+  - Pilot checks: max_concurrent not exceeded
+
+  ### Example Workflow
+
+  ```
+  Research Project: NVIDIA competitive analysis
+  Items:
+    q-001: Market share (parallel_safe=true)
+    q-002: Competitors (parallel_safe=true)
+    q-003: Product roadmap (parallel_safe=true)
+    synth-001: Competitive analysis (parallel_safe=false, depends on q-001,q-002,q-003)
+
+  Execution:
+  1. Pilot calls parallel_batch -> gets [q-001, q-002, q-003]
+  2. Pilot launches 3 agents simultaneously (web-researcher or company-researcher)
+  3. Each agent writes to _working/agent-outputs/q-00X-output.md
+  4. When all 3 complete, Pilot marks synth-001 as in_progress
+  5. Pilot (or academic-researcher) synthesizes into final document
+  ```
+
+rationale: |
+  - Maximizes throughput for independent research
+  - Reduces total time for large research projects
+  - Maintains quality through proper dependency tracking
+  - Enables zero-human-intervention parallel research sessions

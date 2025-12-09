@@ -1,0 +1,68 @@
+name: code-enforcement-principle
+description: Prefer code-based enforcement over prompt-based rule following
+priority: 95
+when:
+  - agent: builder
+  - agent: pilot
+  - agent: git-reviewer
+
+rule: |
+  Rules should be enforced through code, not just documented in prompts.
+
+  ## Enforcement Hierarchy
+
+  1. **Code enforcement** (best): Pre-commit hooks, validators, guards, type checks
+  2. **Context injection** (good): Rules loaded into agent context at runtime
+  3. **Static prompts** (weak): Rules written in agent YAML or CLAUDE.md
+
+  Code enforcement is the strongest because it FAILS when violated.
+  Prompt-based rules can be forgotten, misinterpreted, or ignored.
+
+  ## Why This Matters
+
+  As the system grows, rule explosion becomes a problem:
+  - Agents have limited context windows
+  - More rules = more chances for forgetting
+  - Prompt-based rules require agents to "remember" correctly
+  - Code-based rules require NO memory - they just work
+
+  **Key question to ask**: "How will this rule fail if an agent forgets it?"
+
+  If the answer is "silently" or "the commit goes through anyway",
+  the rule needs code enforcement.
+
+  ## Examples
+
+  | Rule | Bad (prompt-only) | Good (code-enforced) |
+  |------|-------------------|---------------------|
+  | Git review required | "Always invoke @git-reviewer before commit" | Pre-commit hook checks for `.git/REVIEW_APPROVED` marker |
+  | No direct web access | "Use Parallel API only" in agent prompt | `lib/web.py` scans imports, blocks `requests`, `httpx` |
+  | YAML validation | "Ensure valid YAML format" | Pre-commit hook runs `yaml.safe_load()` on all .yaml |
+  | Index regeneration | "Remember to update index" | Pre-commit hook auto-runs `lib/index.py` |
+  | Feature isolation | "Work in correct worktree" | `feature_tracker` errors if wrong branch |
+
+  ## Existing Code Enforcement in This Repo
+
+  - **Pre-commit hook**: YAML validation, index regeneration, review marker check
+  - **feature_tracker**: Errors if operating on wrong branch
+  - **lib/approve.py**: Creates cryptographic approval marker with diff hash
+  - **lib/invoke.py**: Logs all agent invocations (observability enforcement)
+
+  ## When Creating New Rules
+
+  Ask yourself:
+
+  1. Can a pre-commit hook enforce this? (best)
+  2. Can a validator/guard function enforce this? (good)
+  3. Can context injection ensure the agent sees this? (acceptable)
+  4. Is prompt-only the ONLY option? (last resort - document why)
+
+  If you create a prompt-only rule, document WHY code enforcement isn't feasible.
+
+  ## For @git-reviewer
+
+  When reviewing new rules, check:
+  - [ ] Has code enforcement mechanism (hook, validator, guard)
+  - [ ] OR has documented reason why code enforcement isn't feasible
+
+  Prefer REQUEST_CHANGES for prompt-only rules that could be code-enforced.

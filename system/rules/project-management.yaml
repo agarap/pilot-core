@@ -1,0 +1,266 @@
+name: project-management
+description: Standards for project structure, artifacts, and quality
+priority: 95
+when:
+  - agent: pilot
+  - agent: builder
+  - agent: web-researcher
+  - agent: academic-researcher
+
+rule: |
+  ## Core Principle: One Project = One Folder
+
+  **NEVER fragment a single research effort across multiple directories.**
+
+  When human says "research X", all work goes into ONE project folder:
+  ```
+  projects/{namespace}/{topic}/
+  ```
+
+  NOT scattered across:
+  - `research/topic/`
+  - `topic-research/`
+  - `health/topic/`
+  - `topic-findings/`
+
+  **Before creating a new project folder:**
+  1. Search for existing folders with related keywords
+  2. If related work exists, ADD to that folder
+  3. Only create new folder if truly distinct project
+
+  ---
+
+  ## Project Folder Structure
+
+  Every project folder should follow this structure:
+
+  ```
+  projects/{namespace}/{project-name}/
+  ├── .runs/                    # Run manifests (provenance tracking)
+  ├── _working/                 # INTERMEDIATE artifacts (underscore prefix)
+  │   ├── research-notes.md     # Raw notes, drafts
+  │   ├── agent-outputs/        # Individual agent outputs
+  │   ├── data/                 # Raw data, JSON, CSVs
+  │   └── scripts/              # One-off scripts, tools
+  ├── README.md                 # Project overview and status
+  ├── {final-artifact-1}.md     # FINAL deliverable
+  ├── {final-artifact-2}.md     # FINAL deliverable
+  └── VERIFICATION.md           # Quality assurance report (if applicable)
+  ```
+
+  **Key conventions:**
+  - `_working/` prefix = intermediate, not final (excluded from deliverables)
+  - Top-level `.md` files = FINAL artifacts (polished, verified)
+  - `.runs/` = run manifests for provenance
+  - `README.md` = always present, describes project status
+
+  ---
+
+  ## Artifact Types
+
+  ### INTERMEDIATE Artifacts (in `_working/`)
+  - Agent outputs before synthesis
+  - Research notes and raw findings
+  - Draft versions
+  - Data files (JSON, CSV, PMID lists)
+  - Scripts used for processing
+  - Gap analyses and progress tracking
+
+  **Naming**: Descriptive, can be messy
+  - `agent-output-soft-tissue-2025-11-27.md`
+  - `pmid-list-raw.txt`
+  - `draft-v2-needs-review.md`
+
+  ### FINAL Artifacts (top-level in project folder)
+  - Polished, verified documents
+  - Ready for human consumption
+  - Meet quality standards below
+
+  **Naming**: Clear, professional, dated
+  - `comprehensive-review-2025.md`
+  - `executive-summary.md`
+  - `recommendations.md`
+
+  ---
+
+  ## Quality Standards for FINAL Artifacts
+
+  ### Research Documents
+
+  **Citation Requirements:**
+  - Minimum 20 citations for topic overviews
+  - Minimum 50 citations for comprehensive reviews
+  - Minimum 100 citations for literature reviews
+  - All citations must include: Author, Year, PMID/DOI
+  - No uncited claims for factual statements
+
+  **Structure Requirements:**
+  - Executive summary (max 500 words)
+  - Clear section hierarchy (H1 → H2 → H3)
+  - Key findings highlighted
+  - Limitations acknowledged
+  - Future directions noted
+
+  **Comprehensiveness Checklist:**
+  - [ ] Covers all major aspects of topic
+  - [ ] Includes recent publications (last 2 years)
+  - [ ] Addresses conflicting evidence
+  - [ ] Synthesizes across sources (not just summaries)
+  - [ ] Provides actionable insights
+
+  ### Verification Requirements
+
+  **For research with >20 citations:**
+  - VERIFICATION.md required
+  - Citation spot-check (minimum 10% verified)
+  - Claim faithfulness testing
+  - Cross-reference consistency check
+
+  **Verification report must include:**
+  - Methodology used
+  - Sample of citations verified
+  - Faithfulness assessment
+  - Data integrity score
+  - Any discrepancies found
+
+  ---
+
+  ## Research Project Workflow
+
+  ### Phase 1: Setup
+  ```
+  1. Create project folder: projects/{namespace}/{topic}/
+  2. Create README.md with scope and objectives
+  3. Create _working/ directory
+  4. Start run manifest
+  ```
+
+  ### Phase 2: Research (Intermediate)
+  ```
+  1. Deploy research agents (web-researcher, academic-researcher)
+  2. Agents write outputs to _working/agent-outputs/
+  3. Collect raw data in _working/data/
+  4. Track progress in _working/progress.md
+  ```
+
+  ### Phase 3: Synthesis
+  ```
+  1. Review all agent outputs
+  2. Identify gaps, deploy additional agents if needed
+  3. Synthesize findings into draft in _working/
+  4. Compile master citation list
+  ```
+
+  ### Phase 4: Verification
+  ```
+  1. Run citation verification (if >20 citations)
+  2. Spot-check factual claims
+  3. Check internal consistency
+  4. Generate VERIFICATION.md
+  ```
+
+  ### Phase 5: Finalization
+  ```
+  1. Polish final artifacts
+  2. Move from _working/ to top-level
+  3. Update README.md with final status
+  4. Complete run manifest
+  5. Git commit with summary
+  ```
+
+  ---
+
+  ## Agent Responsibilities
+
+  ### Pilot
+  - Creates project folder structure
+  - Assigns work to subagents
+  - Tracks progress across phases
+  - Ensures single-folder principle
+  - Triggers verification phase
+  - Reviews final artifacts before commit
+
+  ### Academic Researcher
+  - Writes outputs to `_working/agent-outputs/`
+  - Includes citations in every output
+  - Flags gaps and uncertainties
+  - Synthesizes across sources
+
+  ### Web Researcher
+  - Writes outputs to `_working/agent-outputs/`
+  - Includes source URLs
+  - Notes retrieval date
+  - Flags paywalled/inaccessible sources
+
+  ### Builder
+  - Creates verification scripts in `_working/scripts/`
+  - Generates verification reports
+  - Does NOT create project folders (Pilot's job)
+
+  ---
+
+  ## Quality Gates
+
+  ### Before marking research "complete":
+  - [ ] All sections of scope covered
+  - [ ] Citation count meets minimum
+  - [ ] Verification report generated (if applicable)
+  - [ ] README.md updated with final status
+  - [ ] No files outside `_working/` that are drafts
+
+  ### Before git commit:
+  - [ ] Final artifacts at top level (not in _working/)
+  - [ ] Intermediate artifacts in _working/
+  - [ ] VERIFICATION.md present (if >20 citations)
+  - [ ] Run manifest complete in .runs/
+  - [ ] git-reviewer approval
+
+  ---
+
+  ## Examples
+
+  ### Good: Single dental research project
+  ```
+  projects/personal/health/dental/implant-esthetics-review/
+  ├── .runs/
+  │   └── 001_Literature_Review.yaml
+  ├── _working/
+  │   ├── agent-outputs/
+  │   │   ├── soft-tissue-research.md
+  │   │   ├── biomaterials-research.md
+  │   │   └── rct-synthesis.md
+  │   ├── data/
+  │   │   └── all-pmids.txt
+  │   ├── scripts/
+  │   │   └── verify_citations.py
+  │   └── progress-tracking.md
+  ├── README.md
+  ├── comprehensive-review-2025.md      # FINAL
+  ├── executive-summary.md              # FINAL
+  └── VERIFICATION.md
+  ```
+
+  ### Bad: Fragmented across directories
+  ```
+  projects/research/dental-implant-esthetics-review/
+  projects/research/dental-implant-esthetics/
+  projects/dental-implant-esthetics/
+  projects/implant-esthetics-research/
+  projects/health/dental-research/
+  projects/dental-research/
+  ```
+
+  ---
+
+  ## Recovery: Consolidating Fragmented Projects
+
+  If you discover fragmented project folders:
+
+  1. Identify the canonical folder (most complete)
+  2. Create `_working/consolidated/` in canonical folder
+  3. Move content from other folders to `_working/consolidated/`
+  4. Synthesize into unified final artifacts
+  5. Delete empty source folders
+  6. Update README.md to note consolidation
+
+  **Do NOT consolidate WIP projects without human approval.**

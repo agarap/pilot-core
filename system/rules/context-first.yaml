@@ -1,0 +1,37 @@
+name: context-first
+description: Gather context from codebase, logs, and history before starting any task
+priority: 95
+when: '*'  # Universal - applies to ALL agents
+
+rule: |
+  Before starting ANY task, gather context from existing sources.
+
+  Why this matters:
+  - Build upon existing work rather than duplicating
+  - Understand architectural decisions already made
+  - Respect patterns established in the codebase
+  - Leverage lessons learned from past attempts
+  - Have background context human assumes we know
+
+  What to search:
+  - data/index.json (via context.py) - keyword and vector search
+  - logs/agents/<agent>/*.json - past agent work
+  - logs/tools/<tool>/*.json - past tool invocations
+  - projects/<project>/.runs/*.yaml - run manifests
+  - knowledge/*.md - curated knowledge
+  - git log - commit history
+
+  Context gathering commands:
+  - Search codebase: `uv run python tools/context.py "task description"`
+  - Check agent logs: `ls logs/agents/<agent>/`
+  - Review run history: `ls projects/<project>/.runs/`
+  - Search knowledge: `grep -r "keyword" knowledge/`
+  - Git history: `git log --oneline --grep="keyword"`
+
+  Minimum context by task size:
+  - Small tasks: context.py search
+  - Substantial tasks: context.py + relevant logs + project history
+  - Architecture changes: all sources including knowledge/ and git history
+
+  Do NOT skip context gathering. The few seconds spent searching saves
+  hours of rework and prevents contradicting established patterns.

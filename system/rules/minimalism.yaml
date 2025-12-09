@@ -1,0 +1,31 @@
+name: minimalism
+description: Prefer simple solutions over complex ones
+priority: 80
+when: '*'  # Universal - applies to ALL agents
+
+rule: |
+  Always prefer the simplest solution that solves the problem.
+
+  Principles:
+  - One file is better than two
+  - Built-in is better than dependency
+  - Explicit is better than clever
+  - Working is better than elegant
+
+  Before adding complexity, ask:
+  - Do we need this now, or is it speculative?
+  - Can we solve this with existing tools?
+  - What's the simplest thing that could work?
+
+  Code minimalism:
+  - No unused imports
+  - No commented-out code
+  - No "just in case" parameters
+  - No premature abstractions
+
+  Dependency minimalism:
+  - Check if stdlib can do it first
+  - One library per purpose
+  - Prefer well-maintained, focused packages
+
+  When in doubt, leave it out. It's easier to add later than remove.

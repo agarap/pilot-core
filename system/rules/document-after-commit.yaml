@@ -1,0 +1,110 @@
+name: document-after-commit
+description: Document decisions and lessons after significant commits
+priority: 70
+when:
+  - agent: pilot
+
+rule: |
+  After each significant commit, check whether to log decisions or lessons.
+
+  ## When This Applies
+
+  After any commit that involves:
+  - Architectural changes or design decisions
+  - Non-trivial bug fixes
+  - New patterns or conventions
+  - Tradeoffs between alternatives
+
+  NOT for trivial commits:
+  - Typo fixes
+  - Minor formatting
+  - Version bumps
+  - README updates
+  - Adding to .gitignore
+
+  ## Post-Commit Checklist
+
+  After committing, Pilot asks:
+
+  ### 1. Did I make a decision worth logging?
+
+  Log a decision when:
+  - Multiple alternatives were seriously considered
+  - The choice affects future development paths
+  - Others would benefit from knowing WHY this approach was chosen
+  - The decision resolves an ambiguous requirement
+  - There are tradeoffs worth remembering
+
+  If YES: Create `knowledge/decisions/NNN-short-name.yaml` using the template.
+  Get next number: `ls knowledge/decisions/*.yaml | grep -v template | wc -l`
+
+  ### 2. Did I learn something worth recording?
+
+  Log a lesson when:
+  - A bug was caught during review (especially if subtle)
+  - A mistake was made and corrected
+  - A useful pattern emerged
+  - Something unexpected happened
+  - A practice proved effective or ineffective
+
+  If YES: Create `knowledge/lessons/short-descriptive-name.yaml`
+  Use kebab-case naming that describes the lesson.
+
+  ### 3. Neither?
+
+  If the commit was routine implementation with no notable decisions or learnings,
+  no documentation needed. Move on to the next task.
+
+  ## Decision Format
+
+  Use `knowledge/decisions/_template.yaml`:
+  - id: Sequential number (001, 002, ...)
+  - title: Brief description
+  - date: When decided (YYYY-MM-DD)
+  - status: accepted
+  - context: Why this decision was needed
+  - decision: What was decided
+  - alternatives: What else was considered
+  - consequences: What this enables/prevents
+
+  ## Lesson Format
+
+  See existing lessons in `knowledge/lessons/`:
+  - name: kebab-case-name (matches filename)
+  - date: When learned (YYYY-MM-DD)
+  - severity: low/medium/high
+  - category: code-quality/architecture/process/etc.
+  - caught_by: git-reviewer/testing/user-report/etc.
+  - summary: One-line description
+  - what_happened: The story
+  - the_fix: How it was resolved
+  - how_caught: How it was discovered
+  - key_takeaway: The lesson in one sentence
+  - prevention: How to avoid in future
+  - related_files: Relevant file paths
+
+  ## Examples
+
+  **Commit that warrants a decision log:**
+  "Chose DuckDB over SQLite for the index because we need vector similarity search"
+  -> Log decision explaining the database choice and alternatives considered
+
+  **Commit that warrants a lesson log:**
+  "Fixed substring matching bug in path type derivation caught by git-reviewer"
+  -> Log lesson about path boundary matching vs substring matching
+
+  **Commit that needs neither:**
+  "Added new greeting message to the CLI"
+  -> Routine implementation, no decision or lesson
+
+  ## Workflow Integration
+
+  This rule triggers AFTER:
+  1. git-review-required (priority 100) - changes reviewed
+  2. Commit completed
+
+  This rule triggers BEFORE:
+  - Moving to the next task
+
+  Priority 70 ensures documentation happens while context is fresh,
+  but after the main commit workflow is complete.

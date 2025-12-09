@@ -1,0 +1,27 @@
+name: git-checkpoint
+description: Create git commits as checkpoints for easy recovery
+priority: 90
+when:
+  - agent: builder
+
+rule: |
+  Create git commits frequently as recovery checkpoints.
+
+  Commit after:
+  - Creating a new file
+  - Completing a logical unit of work
+  - Before making risky changes
+  - After successful tests
+
+  Commit message format:
+  - Start with verb: Add, Fix, Update, Remove, Refactor
+  - Be specific: "Add weather tool with httpx" not "Add tool"
+  - Keep under 50 characters
+
+  Before risky operations:
+  1. Commit current state
+  2. Note the commit hash
+  3. Proceed with risky change
+  4. If it fails, can recover with: git checkout <hash>
+
+  The recover.sh script can also help restore from commits.

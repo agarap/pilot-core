@@ -1,0 +1,78 @@
+name: git-review-required
+description: All changes must be reviewed by git-reviewer before committing
+priority: 100
+when: '*'  # Universal - applies to ALL agents
+
+rule: |
+  No git commit can happen without git-reviewer approval.
+
+  ## What Gets Reviewed
+
+  EVERYTHING in git diff:
+  - Code (*.py, *.js, etc.)
+  - Agents (agents/*.yaml)
+  - Rules (system/rules/*.yaml)
+  - Config (system/config.yaml)
+  - Docs (*.md)
+  - Knowledge (knowledge/**/*)
+  - Tools (tools/*.py)
+  - Any other file changes
+
+  ## Workflow for Changes
+
+  1. **Builder makes changes** (writes/edits files)
+  2. **Builder stages changes** (`git add`)
+  3. **Pilot requests review** (`uv run python -m lib.invoke git-reviewer "Review staged changes"`)
+  4. **Git-reviewer reviews** (checks diff against all rules/guidelines)
+  5. **Git-reviewer responds** with APPROVED or REQUEST_CHANGES
+  6. **If REQUEST_CHANGES**: Builder addresses feedback, go to step 3
+  7. **If APPROVED**: Commit allowed
+
+  ## For Builder
+
+  Before ANY `git commit`:
+  - Stage your changes with `git add`
+  - Request review from git-reviewer through pilot
+  - Wait for APPROVED verdict
+  - Only then run `git commit`
+
+  NEVER commit without approval. This rule has the highest priority.
+
+  ## For Pilot
+
+  When builder has changes ready:
+  - Invoke git-reviewer for review
+  - Pass the review result back to builder
+  - Only allow builder to commit after APPROVED
+
+  ## Exceptions
+
+  The following do NOT require review:
+  - Adding files to .gitignore
+  - Updating .env (which shouldn't be committed anyway)
+  - Emergency recovery operations via recover.sh
+
+  Everything else requires review.
+
+  ## Bypass Policy (PILOT_SKIP_REVIEW=1)
+
+  **Emergency-only.** All three criteria must be met:
+  1. Critical production fix OR review system itself is broken
+  2. Fix is trivial and obvious
+  3. Human explicitly authorizes the bypass
+
+  **Never acceptable for:**
+  - Minor fixes ("it's just 2 files")
+  - Convenience or impatience
+  - Avoiding reviewer feedback
+  - "The reviewer already approved similar changes"
+
+  All bypasses are logged to `logs/bypasses/` with timestamp, user, branch,
+  and files. These logs are reviewed periodically.
+
+  ## Review Request Format
+
+  Provide to git-reviewer:
+  - Summary of what was changed and why
+  - List of files modified
+  - Any concerns or areas needing extra attention

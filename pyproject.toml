@@ -1,0 +1,35 @@
+[project]
+name = "pilot-core"
+version = "0.1.0"
+description = "Core infrastructure for Claude-based agent systems"
+requires-python = ">=3.11"
+dependencies = [
+    "claude-code-sdk",
+    "duckdb",
+    "pyyaml",
+    "python-dotenv",
+    "httpx>=0.28.1",
+]
+
+[project.optional-dependencies]
+# For users who need web tools (Parallel API)
+web = [
+    "aiohttp>=3.13.2",
+]
+# For development
+dev = [
+    "pytest>=9.0.1",
+]
+
+[project.scripts]
+pilot-invoke = "lib.invoke:main"
+pilot-index = "lib.index:index_all"
+pilot-search = "lib.repo_search:main"
+pilot-tools = "tools.__main__:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["lib", "tools", "agents", "system"]

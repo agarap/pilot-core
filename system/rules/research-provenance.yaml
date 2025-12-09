@@ -1,0 +1,59 @@
+name: research-provenance
+description: All academic research must include provenance linking to source logs
+priority: 90
+when:
+  - agent: academic-researcher
+  - agent: pilot
+  - output_path: projects/research/**
+
+rule: |
+  All academic research outputs MUST include a Provenance section that enables
+  traceability back to source data. This supports the core principle that
+  "git diff = observability" - anyone should be able to trace findings to sources.
+
+  Required Provenance Section:
+  Every research document in projects/research/ must end with a "## Provenance"
+  section containing:
+
+  1. **Research metadata**:
+     - Research conducted timestamp (ISO 8601)
+     - Parent log file path (logs/agents/academic-researcher/...)
+     - Duration
+     - Methodology description
+
+  2. **Source thread table**:
+     A markdown table listing all web-researcher logs that contributed:
+     | Log File | Research Thread |
+     |----------|----------------|
+     | filename.json | Topic description |
+
+  3. **Dig deeper instruction**:
+     "To dig deeper into any thread, examine the corresponding web-researcher
+     log which contains raw search results and fetched URLs."
+
+  Why This Matters:
+  - Enables verification of claims
+  - Allows future researchers to access raw data
+  - Supports reproducibility
+  - Follows the filesystem-as-truth principle
+
+  The academic-researcher agent should automatically include this section.
+  If extracting research from logs, Pilot must add provenance manually.
+
+  Example structure:
+  ---
+  ## Provenance
+
+  **Research conducted**: 2025-11-27T08:06:50
+  **Parent log**: `logs/agents/academic-researcher/20251127_080650_4f2b38c0.json`
+  **Duration**: 26.7 minutes
+  **Methodology**: Parallel web research + cross-disciplinary synthesis
+
+  ### Web Researcher Threads
+  | Log File | Research Thread |
+  |----------|----------------|
+  | `20251127_074319_89cead98.json` | Topic A |
+  | `20251127_074449_2966e52c.json` | Topic B |
+
+  To dig deeper into any thread, examine the corresponding web-researcher
+  log which contains raw search results and fetched URLs.
